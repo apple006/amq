@@ -3,7 +3,7 @@ package com.artlongs.amq.net.http;
 import java.util.Map;
 
 /**
-*@author song(mejeesong@qq.com)
+*@author leeton
 *2018年2月6日
 *
 */

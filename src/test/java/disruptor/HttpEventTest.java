@@ -6,6 +6,8 @@ import com.artlongs.amq.net.http.HttpRequest;
 import com.artlongs.amq.net.http.HttpResponse;
 import com.artlongs.amq.net.http.HttpServerConfig;
 import com.artlongs.amq.net.http.aio.AioHttpServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -15,6 +17,7 @@ import java.util.concurrent.Executors;
  * Created by ${leeton} on 2018/9/27.
  */
 public class HttpEventTest {
+    private static Logger logger = LoggerFactory.getLogger(HttpEventTest.class);
 
     public static void handleEvent(HttpEvent httpEvent, long sequence, boolean endOfBatch) {
         HttpRequest req = httpEvent.req;
@@ -41,8 +44,7 @@ public class HttpEventTest {
         }
     }
 
-    public static void main(String[] args) throws Exception
-    {
+    public static void main(String[] args) throws Exception {
         AioHttpServer httpServer = new AioHttpServer(new HttpServerConfig());
 
         // Executor that will be used to construct nvueew threads for consumers
@@ -63,12 +65,19 @@ public class HttpEventTest {
         // Get the ring buffer from the Disruptor to be used for publishing.
         RingBuffer<HttpEvent> ringBuffer = disruptor.getRingBuffer();
         // Get the request then publish event and translate data
-        httpServer.setHttpRequestHandler((HttpRequest req, HttpResponse resp)-> {
-            ringBuffer.publishEvent(HttpEventTest::translate, req,resp);
+        httpServer.setHttpRequestHandler((HttpRequest req, HttpResponse resp) -> {
+            ringBuffer.publishEvent(HttpEventTest::translate, req, resp);
         });
         //
         httpServer.start();
 
-//        Thread.sleep(1000);
+        while (true) {
+            logger.debug(httpServer.getState().getInfo());
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

@@ -14,7 +14,7 @@ import java.nio.channels.CompletionHandler;
 import java.util.concurrent.TimeUnit;
 
 /**
-*@author song(mejeesong@qq.com)
+*@author leeton
 *2018年2月6日
 *
 */

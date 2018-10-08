@@ -1,35 +1,48 @@
 package com.artlongs.amq.net.http;
 
 import com.artlongs.amq.net.http.aio.AioHttpServer;
+import com.artlongs.amq.net.http.routes.Controller;
+import com.artlongs.amq.net.http.routes.Get;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 /**
  * Hello world!
  *
  */
-public class App {
+public class App extends Thread {
 	private static Logger logger = LoggerFactory.getLogger(App.class);
 
 	public static void main(String[] args) {
+        //
 		HttpServer httpServer = new AioHttpServer(new HttpServerConfig());
-		httpServer.setHttpRequestHandler((res,resp)->{
+        //
+        Controller controller= new Controller() {
+            @Get("/user/{username}")
+            public HttpHandler index(String username) {
+                return ((res,resp)->{
+                    resp.setState(200);
+                    resp.append(username);
+                    resp.end();
 
-		});
-		try {
-			httpServer.start();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		while(true) {
-			logger.debug(httpServer.getState().getInfo());
-			try {
-				Thread.sleep(5000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-	}
+                });
+            }
+        };
+        //
+        httpServer.accept(controller);
+        httpServer.run();
+
+        while (true) {
+            try {
+                Thread.sleep(Integer.MAX_VALUE);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+    }
+
+
+
 }

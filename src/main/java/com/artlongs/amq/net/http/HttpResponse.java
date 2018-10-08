@@ -1,7 +1,7 @@
 package com.artlongs.amq.net.http;
 
 /**
-*@author song(mejeesong@qq.com)
+*@author leeton
 *2018年2月6日
 *
 */

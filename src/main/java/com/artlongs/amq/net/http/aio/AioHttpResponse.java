@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * @author song(mejeesong@qq.com) 2018年2月6日
+ * @author leeton 2018年2月6日
  */
 public class AioHttpResponse implements HttpResponse {
 
