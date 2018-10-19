@@ -8,5 +8,5 @@ import com.artlongs.amq.net.http.routes.Controller;
 *
 */
 public interface HttpHandler extends Controller{
-	void handle(HttpRequest req, HttpResponse res) throws Exception;
+	void handle(HttpRequest req, HttpResponse res) ;
 }

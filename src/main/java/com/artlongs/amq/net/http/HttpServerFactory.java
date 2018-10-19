@@ -1,22 +1,31 @@
 package com.artlongs.amq.net.http;
 
 import com.artlongs.amq.net.http.aio.AioHttpServer;
+import com.artlongs.amq.net.http.nio.NioHttpServer;
 import com.artlongs.amq.net.http.routes.Controller;
 import com.artlongs.amq.net.http.routes.Get;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * Hello world!
- *
+ * Created by ${leeton} on 2018/10/16.
  */
-public class App extends Thread {
-	private static Logger logger = LoggerFactory.getLogger(App.class);
+public class HttpServerFactory {
+    private HttpServer server;
 
-	public static void main(String[] args) {
-        //
-		HttpServer httpServer = new AioHttpServer(new HttpServerConfig());
-        //
+    public HttpServerFactory(HttpServerConfig config) {
+        switch (config.io) {
+            case aio:
+                this.server = new AioHttpServer(config);
+                break;
+            case nio:
+                this.server = new NioHttpServer(config);
+                break;
+        }
+
+    }
+
+
+    public static void main(String[] args) {
+
         Controller controller= new Controller() {
             @Get("/user/{username}")
             public HttpHandler index(String username) {
@@ -27,10 +36,13 @@ public class App extends Thread {
 
                 });
             }
+
         };
-        //
-        httpServer.addController(controller);
-        httpServer.run();
+
+
+        HttpServerFactory factory = new HttpServerFactory(new HttpServerConfig());
+        factory.server.addController(controller);
+        factory.server.run();
 
         while (true) {
             try {
@@ -40,8 +52,9 @@ public class App extends Thread {
             }
         }
 
-    }
 
+
+    }
 
 
 }

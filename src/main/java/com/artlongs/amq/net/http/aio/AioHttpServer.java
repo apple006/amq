@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.Buffer;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.util.concurrent.ExecutorService;
@@ -23,14 +24,16 @@ import java.util.concurrent.Executors;
 *2018年2月6日
 *
 */
-public class AioHttpServer implements HttpServer{
+public class AioHttpServer implements HttpServer {
 	private static Logger LOGGER = LoggerFactory.getLogger(AioHttpServer.class);
 	private HttpServerConfig config = null;
 	private AsynchronousServerSocketChannel serverSocket = null;
 	private HttpHandler handler = null;
 	private HttpServerState state = null;
 	private Router router;
-	
+	private Buffer in;
+	private Buffer out;
+
 	public AioHttpServer(HttpServerConfig config) {
 		this.config = config;
 		state = new HttpServerState(this);
@@ -52,7 +55,7 @@ public class AioHttpServer implements HttpServer{
 		} catch (IOException e) {
 			throw new RuntimeException(" http start on Error:" + e);
 		}
-		LOGGER.info("Httpdoor had started,listening {}:{}",config.address,config.port);
+		LOGGER.warn("AMQ-HTTP had started,listening {}:{}",config.address,config.port);
 	}
 
 	public void shutdown() {
@@ -67,7 +70,6 @@ public class AioHttpServer implements HttpServer{
 		return state;
 	}
 	
-	@Override
 	public HttpServerConfig getConfig() {
 		return config;
 	}
@@ -81,27 +83,21 @@ public class AioHttpServer implements HttpServer{
 		this.serverSocket = serverSocket;
 	}
 
-	@Override
-	public void setHttpRequestHandler(HttpHandler handler) {
+	public void handler(HttpHandler handler) {
 		this.handler = handler;
 	}
 
-	public HttpServer accept(Controller controller) {
-		this.handler= router;
-		Router.addRoutes(controller, router);
+	public HttpServer addController(Controller... controller) {
+		this.handler= Router.asRouter(controller);
 		return this;
 	}
 
-	@Override
-	public HttpHandler getHttpRequestHandler() {
+	public HttpHandler getHandler() {
 		return handler;
 	}
 
 	@Override
-	public void run() {
-		Thread thread = new Thread(this);
-		thread.setDaemon(true);
-		this.start();
-	}
+	public void data(Buffer in, Buffer out) {
 
+	}
 }

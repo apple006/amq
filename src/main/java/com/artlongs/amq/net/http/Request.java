@@ -1,7 +1,5 @@
-package com.artlongs.amq.net.http.aio;
+package com.artlongs.amq.net.http;
 
-
-import com.artlongs.amq.net.http.HttpRequest;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -12,12 +10,12 @@ import java.util.Map;
 *2018年2月6日
 *
 */
-public class AioHttpRequest implements HttpRequest {
+public class Request implements HttpRequest {
 
 	public String method = METHOD_GET;
 	public String uri;
 	public String query;
-	private byte[] bodyBytes;
+	public byte[] bodyBytes;
 	public final Map<String,String> headers = new HashMap<>();
 
 	@Override
@@ -32,7 +30,6 @@ public class AioHttpRequest implements HttpRequest {
 	public String query() {
 		return query;
 	}
-	
 	@Override
 	public byte[] bodyBytes() {
 		return bodyBytes;
@@ -52,7 +49,7 @@ public class AioHttpRequest implements HttpRequest {
 
 	@Override
 	public String toString() {
-		return "AioHttpRequest [method=" + method + ", uri=" + uri + ", query=" + query + ", bodyBytes="
+		return "Request [method=" + method + ", uri=" + uri + ", query=" + query + ", bodyBytes="
 				+ Arrays.toString(bodyBytes) + ", headers=" + headers + "]";
 	}
 	

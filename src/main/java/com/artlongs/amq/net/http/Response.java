@@ -1,11 +1,11 @@
-package com.artlongs.amq.net.http.aio;
+package com.artlongs.amq.net.http;
 
-import com.artlongs.amq.net.http.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
@@ -16,7 +16,8 @@ import java.util.Set;
 /**
  * @author leeton 2018年2月6日
  */
-public class AioHttpResponse implements HttpResponse {
+public class Response implements HttpResponse {
+    private static final Logger logger = LoggerFactory.getLogger(Response.class);
 
     class SocketWriteHandler implements CompletionHandler<Integer, Void> {
 
@@ -41,10 +42,8 @@ public class AioHttpResponse implements HttpResponse {
     private static final int STATE_BODY = 3;
     private static final String MSG_OK = "OK";
 
-    private Logger logger = null;
-
     static {
-        baseHeaders.put("Server", "httpdoor");
+        baseHeaders.put("Server", "amq-http");
         baseHeaders.put("Content-Type", "text/html; charset=utf-8");
         baseHeaders.put("Transfer-Encoding", "chunked");
     }
@@ -62,14 +61,10 @@ public class AioHttpResponse implements HttpResponse {
 
 
     @SuppressWarnings("unchecked")
-    public AioHttpResponse(AsynchronousSocketChannel client) {
+    public Response(AsynchronousSocketChannel client) {
         headers = (Map<String, String>) baseHeaders.clone();
         this.client = client;
-        try {
-            logger = LoggerFactory.getLogger(this.getClass() + client.getRemoteAddress().toString());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        logger.info(this.getClass() + getRemoteAddr(client).toString());
     }
 
     @Override
@@ -186,5 +181,14 @@ public class AioHttpResponse implements HttpResponse {
         } catch (IOException ex) {
             throw new RuntimeException("IO write on Error:", ex);
         }
+    }
+
+    private SocketAddress getRemoteAddr(AsynchronousSocketChannel channel){
+        try {
+          return channel.getRemoteAddress();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

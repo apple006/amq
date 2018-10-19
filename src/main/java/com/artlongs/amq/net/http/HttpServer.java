@@ -4,18 +4,29 @@ import com.artlongs.amq.net.http.routes.Controller;
 
 /**
 *@author leeton
-*2018年2月6日
-*
-*/
-public interface HttpServer extends Runnable{
+ *2018年2月6日
+ *
+ */
+public interface HttpServer extends Exchange, Runnable {
 	void start();
+
 	void shutdown();
+
 	void stop();
-	void setHttpRequestHandler(HttpHandler handler);
-	HttpHandler getHttpRequestHandler();
+
+	HttpHandler getHandler();
+
 	HttpServerState getState();
+
 	HttpServerConfig getConfig();
 
-	public HttpServer accept(Controller controller);
-	
+	HttpServer addController(Controller... controller);
+
+	@Override
+	default void run() {
+		Thread thread = new Thread(this);
+		thread.setDaemon(true);
+		this.start();
+	}
+
 }

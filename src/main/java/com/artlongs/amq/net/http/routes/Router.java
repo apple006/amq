@@ -63,8 +63,10 @@ public class Router implements HttpHandler {
         if (controllers == null)
             throw new IllegalArgumentException();
         Router router = new Router();
-        for (Controller controller : controllers)
+        for (Controller controller : controllers){
             Router.addRoutes(controller.getClass(), controller, router);
+
+        }
         return router;
     }
 
@@ -248,7 +250,7 @@ public class Router implements HttpHandler {
 
 
     @Override
-    public void handle(HttpRequest req, HttpResponse res) throws Exception {
+    public void handle(HttpRequest req, HttpResponse res) {
         if(null == req || null == res) return;
         try {
             Object o = find(req.method(), req.uri());

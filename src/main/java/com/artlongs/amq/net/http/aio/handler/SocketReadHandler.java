@@ -1,8 +1,8 @@
 package com.artlongs.amq.net.http.aio.handler;
 
+import com.artlongs.amq.net.http.HttpResolver;
+import com.artlongs.amq.net.http.HttpServer;
 import com.artlongs.amq.net.http.HttpServerState;
-import com.artlongs.amq.net.http.aio.AioHttpServer;
-import com.artlongs.amq.net.http.aio.HttpRequestResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
-import java.util.concurrent.TimeUnit;
 
 /**
 *@author leeton
@@ -20,15 +19,17 @@ import java.util.concurrent.TimeUnit;
 public class SocketReadHandler implements CompletionHandler<Integer, ByteBuffer>,Cloneable {
 
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
-	private HttpRequestResolver resolver = null;
+	private HttpResolver resolver = null;
 	private AsynchronousSocketChannel client = null;
 	public static HttpServerState state = null;
+
 	
-	public SocketReadHandler(AioHttpServer httpServer,AsynchronousSocketChannel client) {
+	public SocketReadHandler(HttpServer httpServer, AsynchronousSocketChannel client) {
 		this.client = client;
-		resolver = new HttpRequestResolver(httpServer,client);
+		resolver = new HttpResolver(httpServer,client);
 		state = httpServer.getState();
 	}
+
 	@Override
 	public void completed(Integer result, ByteBuffer attachment) {
 		if(result == -1) {
@@ -38,19 +39,21 @@ public class SocketReadHandler implements CompletionHandler<Integer, ByteBuffer>
 		attachment.flip();
 		byte[] buffer = new byte[result];
 		attachment.get(buffer, 0, result);
-		attachment.clear();
-		try {
-			resolver.append(buffer);
-		} catch (Exception e) {
-			e.printStackTrace();
+        attachment.clear();
+        try {
+            resolver.append(attachment);
 			closeConn();
-			return;
-		}
-		this.client.read(attachment,50,TimeUnit.MINUTES,attachment,this);
+        } catch (Exception e) {
+            e.printStackTrace();
+            closeConn();
+            return;
+        }
+
+//		this.client.read(attachment,50,TimeUnit.MINUTES,attachment,this);
 	}
 	@Override
-	public void failed(Throwable exc, ByteBuffer attachment) {
-		logger.debug("read failed,exc:"+exc.getStackTrace());
+	public void failed(Throwable ex, ByteBuffer attachment) {
+		logger.debug("read failed,maybe resource not exist. exception msg:{}",ex.getMessage());
 		closeConn();
 	}
 	

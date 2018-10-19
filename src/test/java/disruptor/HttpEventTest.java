@@ -65,7 +65,7 @@ public class HttpEventTest {
         // Get the ring buffer from the Disruptor to be used for publishing.
         RingBuffer<HttpEvent> ringBuffer = disruptor.getRingBuffer();
         // Get the request then publish event and translate data
-        httpServer.setHttpRequestHandler((HttpRequest req, HttpResponse resp) -> {
+        httpServer.handler((HttpRequest req, HttpResponse resp) -> {
             ringBuffer.publishEvent(HttpEventTest::translate, req, resp);
         });
         //

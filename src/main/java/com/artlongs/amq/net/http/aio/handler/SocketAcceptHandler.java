@@ -24,7 +24,7 @@ public class SocketAcceptHandler implements CompletionHandler<AsynchronousSocket
 	private AioHttpServer httpServer = null;
 	private HttpServerState state = null;
 	private HttpServerConfig config = null;
-	
+
 	public SocketAcceptHandler(AioHttpServer httpServer) {
 		this.serverSocket = httpServer.getServerSocket();
 		this.httpServer = httpServer;
@@ -40,7 +40,8 @@ public class SocketAcceptHandler implements CompletionHandler<AsynchronousSocket
 		}
 		int n = state.incrementAndGet(HttpServerState.FIELD_CONNECTION);
 		
-		ByteBuffer byteBuf = ByteBuffer.allocate(256);
+//		ByteBuffer byteBuf = ByteBuffer.allocate(256);
+		ByteBuffer byteBuf = HttpServerConfig.bufferPool.allocate().getResource(); // 分配 direct buffer
 		client.read(byteBuf,config.readWait,TimeUnit.SECONDS,byteBuf, new SocketReadHandler(httpServer,client));
 		
 		while(n >= config.maxConnection) {
