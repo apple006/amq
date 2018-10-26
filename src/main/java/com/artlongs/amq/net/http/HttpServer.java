@@ -7,12 +7,14 @@ import com.artlongs.amq.net.http.routes.Controller;
  *2018年2月6日
  *
  */
-public interface HttpServer extends Exchange, Runnable {
+public interface HttpServer extends Runnable {
 	void start();
 
 	void shutdown();
 
 	void stop();
+
+	void handler(HttpHandler httpHandler);
 
 	HttpHandler getHandler();
 
@@ -21,6 +23,9 @@ public interface HttpServer extends Exchange, Runnable {
 	HttpServerConfig getConfig();
 
 	HttpServer addController(Controller... controller);
+
+	void writer(Writer writer);
+	Writer getWriter();
 
 	@Override
 	default void run() {

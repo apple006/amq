@@ -9,8 +9,8 @@ import com.artlongs.amq.net.http.aio.AioHttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  *
@@ -48,13 +48,14 @@ public class HttpEventTest {
         AioHttpServer httpServer = new AioHttpServer(new HttpServerConfig());
 
         // Executor that will be used to construct nvueew threads for consumers
-        Executor executor = Executors.newCachedThreadPool();
+//        Executor executor = Executors.newCachedThreadPool();
+        ThreadFactory threadFactory = Executors.defaultThreadFactory();
 
         // Specify the size of the ring buffer, must be power of 2.
         int bufferSize = 1024;
 
         // Construct the Disruptor
-        Disruptor<HttpEvent> disruptor = new Disruptor<>(HttpEvent::new, bufferSize, executor);
+        Disruptor<HttpEvent> disruptor = new Disruptor<>(HttpEvent::new, bufferSize, threadFactory);
 
         // Connect the handler
         disruptor.handleEventsWith(HttpEventTest::handleEvent);

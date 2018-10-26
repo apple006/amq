@@ -2,6 +2,8 @@ package com.artlongs.amq.net.http.routes;
 
 import com.artlongs.amq.net.http.HttpHandler;
 import com.artlongs.amq.net.http.HttpRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -19,6 +21,7 @@ import java.util.regex.Pattern;
  * @since 1.0
  */
 public class Route {
+    public static final Logger logger = LoggerFactory.getLogger(Route.class);
     public static final String DEFAULT_PARAMETER_PATTERN = ".+";
     public static final Pattern PARAMETER_PATTERN = Pattern.compile("\\{([A-z]+)}");
     private final String path;
@@ -139,29 +142,40 @@ public class Route {
             throw new RuntimeException("Unable to match uri against route pattern.");
         if (matcher.groupCount() != parameters.size())
             throw new RuntimeException("Parameter mismatch. Unable to find matcher group for each argument.");
-        if (parameters.isEmpty())
-            return method.invoke(parent);
+        if (parameters.isEmpty()) return invoke(method, parent);
         Class<?>[] types = method.getParameterTypes();
         Object[] values = new Object[parameters.size()];
         for (int i = 0; i < values.length; i++) {
             String s = matcher.group(i + 1);
             int index = parameterOrder.get(parameters.get(i));
-            Object value = null;
             Class<?> c = types[i];
-            if (c == String.class)
-                value = s;
-            else if (c == int.class || c == Integer.class)
-                value = Integer.parseInt(s);
-            else if (c == long.class || c == Long.class)
-                value = Long.parseLong(s);
-            else if (c == float.class || c == Float.class)
-                value = Float.parseFloat(s);
-            else if (c == double.class || c == Double.class)
-                value = Double.parseDouble(s);
-
-            values[index] = value;
+            values[index] = getValOfBaseType(c,s);
         }
         return method.invoke(parent, values);
+    }
+
+    private Object invoke(Method method, Object object) {
+        try {
+           return method.invoke(object);
+        } catch (IllegalAccessException e) {
+            logger.error(" invoke error:", e);
+        } catch (InvocationTargetException e) {
+            logger.error(" invoke error:", e);
+        }
+        return null;
+    }
+
+    private Object getValOfBaseType(Class<?> c,String v) {
+        if (c == int.class || c == Integer.class)
+            return Integer.parseInt(v);
+        else if (c == long.class || c == Long.class)
+            return Long.parseLong(v);
+        else if (c == float.class || c == Float.class)
+            return Float.parseFloat(v);
+        else if (c == double.class || c == Double.class){
+            return Double.parseDouble(v);
+        }
+        return v;
     }
 
     public Pattern compile() {

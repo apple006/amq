@@ -1,6 +1,7 @@
 package com.artlongs.amq.net.http.routes;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -26,7 +27,7 @@ public class RoutePath {
         return count;
     }
 
-    public static String[] parameters(String path) {
+    public static List<String> parameters(String path) {
         if (path == null)
             throw new IllegalArgumentException();
         List<String> parameters = new ArrayList<>();
@@ -34,8 +35,14 @@ public class RoutePath {
         int count = 0;
         while (matcher.find())
             parameters.add(matcher.group(1));
-        return parameters.toArray(new String[parameters.size()]);
+        return parameters;
     }
+
+    public static List<String> addMethodParms(List<String> paramList, List<Parameter> methodParms) {
+        methodParms.stream().filter(m -> null != m.getName()).forEach((m) -> paramList.add(m.getName()));
+        return paramList;
+    }
+
 
     public static Method of(String methodPath) throws ClassNotFoundException {
         return RoutePath.of(methodPath, 0);

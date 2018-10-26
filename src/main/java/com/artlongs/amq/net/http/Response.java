@@ -5,10 +5,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
-import java.nio.channels.CompletionHandler;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -18,21 +16,6 @@ import java.util.Set;
  */
 public class Response implements HttpResponse {
     private static final Logger logger = LoggerFactory.getLogger(Response.class);
-
-    class SocketWriteHandler implements CompletionHandler<Integer, Void> {
-
-        @Override
-        public void completed(Integer result, Void attachment) {
-            canWrite = true;
-        }
-
-        @Override
-        public void failed(Throwable exc, Void attachment) {
-            canWrite = true;
-        }
-
-    }
-
     // 保证单线程写，不必考虑多线程
     private static final HashMap<String, String> baseHeaders = new HashMap<>();
     private static final byte[] rn = "\r\n".getBytes();
@@ -52,19 +35,14 @@ public class Response implements HttpResponse {
     private int state = STATE_RESP_LINE;
     private String msg = MSG_OK;
     private Map<String, String> headers = null;
-    private AsynchronousSocketChannel client;
     private int bufferLen = 128;
     private ByteBuffer buffer = ByteBuffer.allocate(bufferLen);
     private ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    private SocketWriteHandler writeHandler = new SocketWriteHandler();
-    private Boolean canWrite = true;
+    private HttpServer server;
 
-
-    @SuppressWarnings("unchecked")
-    public Response(AsynchronousSocketChannel client) {
-        headers = (Map<String, String>) baseHeaders.clone();
-        this.client = client;
-        logger.info(this.getClass() + getRemoteAddr(client).toString());
+    public Response(HttpServer server) {
+        headers = baseHeaders;
+        this.server = server;
     }
 
     @Override
@@ -100,6 +78,19 @@ public class Response implements HttpResponse {
     }
 
     @Override
+    public void end(){
+        if (state == STATE_END) {
+            return;
+        }
+        ioWrite(baos, "0\r\n\r\n".getBytes());
+        flush();
+        state = STATE_END;
+        //close
+        server.getWriter().close();
+    }
+
+
+    @Override
     public void flush() {
         if (state == STATE_END) {
             return;
@@ -128,42 +119,23 @@ public class Response implements HttpResponse {
             int offset = 0;
             int len = data.length;
             while (offset < len) {
-                while (!canWrite) {
-                    logger.debug("wait canWrite.");
-                    try {
-                        Thread.sleep(200);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    logger.debug("canWrite.:{}", canWrite);
-                }
-                canWrite = false;
                 buffer.clear();
                 int remain = buffer.remaining();
                 if (remain + offset < len) {
                     buffer.put(data, offset, remain);
                     offset += remain;
                     buffer.flip();
-                    client.write(buffer, null, writeHandler);
+                    server.getWriter().write(buffer);
                 } else {
                     buffer.put(data, offset, len - offset);
                     buffer.flip();
-                    client.write(buffer, null, writeHandler);
+                    server.getWriter().write(buffer);
                     break;
                 }
             }
         }
     }
 
-    @Override
-    public void end(){
-        if (state == STATE_END) {
-            return;
-        }
-        ioWrite(baos, "0\r\n\r\n".getBytes());
-        flush();
-        state = STATE_END;
-    }
 
 
     private void writeChunk(byte[] data) {
@@ -183,12 +155,16 @@ public class Response implements HttpResponse {
         }
     }
 
-    private SocketAddress getRemoteAddr(AsynchronousSocketChannel channel){
+    private String getRemoteAddr(AsynchronousSocketChannel channel){
         try {
-          return channel.getRemoteAddress();
+            if(channel != null && channel.isOpen()){
+                return channel.getRemoteAddress().toString();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return null;
+        return "";
     }
+
+
 }

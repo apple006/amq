@@ -5,8 +5,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.channels.AsynchronousSocketChannel;
-import java.nio.charset.StandardCharsets;
 
 /**
 *@author leeton
@@ -20,22 +18,21 @@ public class HttpResolver {
 	}
 	
 	private StringBuilder context = new StringBuilder();
-	
-	Request req = null;
+
+	private Request req = null;
 	
 	private ReadState state = ReadState.BEGIN;
-	private AsynchronousSocketChannel client;
 	private HttpServer httpServer = null;
 	
-	public HttpResolver(HttpServer httpServer, AsynchronousSocketChannel client) {
+	public HttpResolver(HttpServer httpServer) {
 		this.httpServer = httpServer;
-		this.client = client;
 	}
-	
-	public void append(ByteBuffer data) throws Exception{
-//		context.append(data);
-		CharBuffer buffer = StandardCharsets.UTF_8.decode(data);
-		context.append(buffer.toString());
+
+    public void excute(ByteBuffer data){
+//		context.excute(data);
+		data.flip();
+		CharBuffer buffer = HttpServerConfig.charsets.decode(data);
+		context.append(buffer);
 		if(state == ReadState.BEGIN || state == ReadState.REQ_LINE) {
 			req = new Request();
 			resolveRequestLine();
@@ -44,11 +41,11 @@ public class HttpResolver {
 			resolveHeader();
 		}
 		if(state == ReadState.BODY) {
-			resolveBody(data.array());
+			resolveBody(context);
 		}
 		if(state == ReadState.END) {
-			logger.debug("receive a new request from {},uri={},req={},socket={}",client.getRemoteAddress(),req.uri,req.hashCode(),client.hashCode());
-			HttpResponse resp = new Response(client);
+//			logger.debug("receive a new request from {},uri={},req={},socket={}",client.getRemoteAddress(),req.uri,req.hashCode(),client.hashCode());
+			HttpResponse resp = new Response(this.httpServer);
 			HttpServerState state = httpServer.getState();
 			state.incrementAndGet(HttpServerState.FIELD_CONCURRENT);
 			try {
@@ -56,12 +53,14 @@ public class HttpResolver {
 				state.decrementAndGet(HttpServerState.FIELD_CONCURRENT);
 			}catch(Exception e) {
 				state.decrementAndGet(HttpServerState.FIELD_CONCURRENT);
-				throw e;
+				logger.error("Build http handle exception:", e);
+
 			}finally {
 				// free buffer
 				HttpServerConfig.bufferPool.allocate().free();
+				httpServer.getWriter().close();
 			}
-			logger.debug("handle finished the request from {},uri={},req={},socket={}",client.getRemoteAddress(),req.uri,req.hashCode(),client.hashCode());
+//			logger.debug("handle finished the request from {},uri={},req={},socket={}",client.getRemoteAddress(),req.uri,req.hashCode(),client.hashCode());
 		}
 	}
 	private void resolveRequestLine() {
@@ -108,9 +107,10 @@ public class HttpResolver {
 		}
 		state = ReadState.END;
 	}
-	private void resolveBody(byte[] data) {
+	private void resolveBody(StringBuilder data) {
 		if (state != ReadState.BODY) return;
-		req.bodyBytes = data;
-		this.state = ReadState.END;
+		req.bodyBytes = data.toString().getBytes();
+		state = ReadState.END;
 	}
+
 }

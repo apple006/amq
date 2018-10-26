@@ -12,8 +12,8 @@ public class HttpServerState {
 	public static final String STATE_RUNNING = "RUNNING";
 	public static final String STATE_STOPED = "STOPED";
 	
-	public static int FIELD_CONNECTION = 0;
-	public static int FIELD_CONCURRENT = 1;
+	public static int FIELD_CONNECTION = 0; //连接计数器
+	public static int FIELD_CONCURRENT = 1; //并发计数器
 	
 	private AtomicInteger[] fields = new AtomicInteger[2];
 	

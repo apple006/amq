@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -124,6 +125,7 @@ public class Router implements HttpHandler {
                 String requestType;
                 String path;
                 String[] patterns;
+                List<Parameter> methodParams = new ArrayList();
                 int[] indexes;
                 if (method.isAnnotationPresent(Get.class)) {
                     Get get = method.getAnnotation(Get.class);
@@ -137,6 +139,7 @@ public class Router implements HttpHandler {
                     path = post.value();
                     patterns = post.patterns();
                     indexes = post.indexes();
+                    methodParams = Arrays.asList(method.getParameters());
                 } else if (method.isAnnotationPresent(Delete.class)) {
                     Delete delete = method.getAnnotation(Delete.class);
                     requestType = HttpRequest.METHOD_DELETE;
@@ -146,16 +149,17 @@ public class Router implements HttpHandler {
                 } else {
                     return;
                 }
-                String[] parameters = RoutePath.parameters(path);
-                if (patterns.length != 0 && patterns.length != parameters.length)
+                List<String> parameters = RoutePath.parameters(path);
+                parameters = RoutePath.addMethodParms(parameters, methodParams);
+                if (patterns.length != 0 && patterns.length != parameters.size())
                     throw new IllegalArgumentException("Parameter mismatch. A pattern must be specified for all parameters, if any.");
-                if (indexes.length != 0 && indexes.length != parameters.length)
+                if (indexes.length != 0 && indexes.length != parameters.size())
                     throw new IllegalArgumentException("Parameter mismatch. An index must be specified for all parameters, if any.");
                 Route route = new Route(requestType, path);
                 for (int i = 0; i < patterns.length; i++)
-                    route.where(parameters[i], patterns[i]);
+                    route.where(parameters.get(i), patterns[i]);
                 for (int i = 0; i < indexes.length; i++)
-                    route.where(parameters[i], indexes[i]);
+                    route.where(parameters.get(i), indexes[i]);
                 boolean isStatic = Modifier.isStatic(method.getModifiers());
                 if (!isStatic && controller == null)
                     throw new IllegalArgumentException("Illegal route. Methods must be declared static for non-instantiated controllers.");
@@ -260,7 +264,8 @@ public class Router implements HttpHandler {
             }
 
         } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new RuntimeException("Unable to invoke route action.", e);
+           // throw new RuntimeException("Unable to invoke route action.", e);
+            logger.error("Unable to invoke route action.", e);
         }
     }
 }
