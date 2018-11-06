@@ -3,13 +3,18 @@ package com.artlongs.amq.net.http;
 import com.artlongs.amq.net.http.aio.AioHttpServer;
 import com.artlongs.amq.net.http.routes.Controller;
 import com.artlongs.amq.net.http.routes.Get;
+import com.artlongs.amq.net.http.routes.Url;
 import com.artlongs.amq.net.http.routes.Post;
+import io.github.classgraph.*;
 
 import java.io.File;
+import java.lang.reflect.Method;
+import java.util.List;
 
 /**
  * Created by ${leeton} on 2018/10/16.
  */
+
 public class HttpServerFactory {
     private HttpServer server;
 
@@ -28,8 +33,9 @@ public class HttpServerFactory {
 
     public static void main(String[] args) {
 
+        @Url
         Controller controller= new Controller() {
-            @Get("/user/{username}")
+            @Get("/")
             public HttpHandler index(String username) {
                 return ((res,resp)->{
                     resp.setState(200);
@@ -38,15 +44,14 @@ public class HttpServerFactory {
 
                 });
             }
-
         };
 
         Controller controller2= new Controller() {
-            @Post("/user/add")
-            public HttpHandler upFile(File file) {
+            @Post("/upload")
+            public HttpHandler upFile(String file,String ok) {
                 return ((res,resp)->{
                     resp.setState(200);
-                    resp.append("ok");
+                    resp.append(file);
                     resp.end();
                 });
             }
@@ -56,8 +61,9 @@ public class HttpServerFactory {
 
 
         HttpServerFactory factory = new HttpServerFactory(new HttpServerConfig());
-        factory.server.addController(controller,controller2);
+        factory.server.addController(controller);
         factory.server.run();
+
 
         while (true) {
             try {

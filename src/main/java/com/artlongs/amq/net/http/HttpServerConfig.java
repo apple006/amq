@@ -28,5 +28,6 @@ public class HttpServerConfig {
 	public int readWait = 3;
 	public int requestWait = 300;
 	public int threadPoolSize=20;
+	public int connectTimeout = 3;
 
 }

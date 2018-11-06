@@ -46,6 +46,12 @@ public class AioHttpServer implements HttpServer {
 
 	}
 
+	@Override
+	public void setDaemon(Runnable r) {
+		Thread t = new Thread(r);
+		t.setDaemon(true);
+	}
+
 	public void start() {
 		try {
 			ExecutorService threadPool = Executors.newFixedThreadPool(config.threadPoolSize);
@@ -53,6 +59,7 @@ public class AioHttpServer implements HttpServer {
 			serverSocket = AsynchronousServerSocketChannel.open(group);
 			serverSocket.bind(new InetSocketAddress(config.address, config.port));
 			serverSocket.accept(null, new SocketAcceptHandler(this));
+			setDaemon(this);
 
 			this.ringBuffer = buildRingBuffer(); //创建 RingBuffer
 
@@ -127,5 +134,10 @@ public class AioHttpServer implements HttpServer {
 	@Override
 	public Writer getWriter() {
 		return writer;
+	}
+
+	@Override
+	public void run() {
+		this.start();
 	}
 }

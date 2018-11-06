@@ -7,10 +7,8 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.math.BigDecimal;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -131,38 +129,61 @@ public class Route {
         return (evaluatedPattern != null ? evaluatedPattern : (evaluatedPattern = compile())).matcher(uri).matches();
     }
 
-    public Object invoke(String uri) throws InvocationTargetException, IllegalAccessException {
+    public Object invoke(HttpRequest req) throws InvocationTargetException, IllegalAccessException {
+        Set<Object> valueSet = new HashSet<>();
         if (direct != null)
             return direct;
         if (method == null)
             throw new RuntimeException("No method configured for route. Route#use must be called to assign the method to invoke.");
         method.setAccessible(true);
-        Matcher matcher = (evaluatedPattern != null ? evaluatedPattern : (evaluatedPattern = compile())).matcher(uri);
+        Matcher matcher = (evaluatedPattern != null ? evaluatedPattern : (evaluatedPattern = compile())).matcher(req.uri());
         if (!matcher.matches())
             throw new RuntimeException("Unable to match uri against route pattern.");
         if (matcher.groupCount() != parameters.size())
             throw new RuntimeException("Parameter mismatch. Unable to find matcher group for each argument.");
-        if (parameters.isEmpty()) return invoke(method, parent);
-        Class<?>[] types = method.getParameterTypes();
-        Object[] values = new Object[parameters.size()];
-        for (int i = 0; i < values.length; i++) {
-            String s = matcher.group(i + 1);
-            int index = parameterOrder.get(parameters.get(i));
-            Class<?> c = types[i];
-            values[index] = getValOfBaseType(c,s);
+        //没有入参
+        if (parameters.isEmpty() && method.getParameterCount()==0){
+            return method.invoke(parent,null);
         }
-        return method.invoke(parent, values);
+
+        // path prames
+        Class<?>[] types = method.getParameterTypes();
+        for (int i = 0; i < parameters.size(); i++) {
+            String s = matcher.group(i + 1).replace("/","");
+            Class<?> c = types[i];
+            req.params().put(reverseParameterOrder.get(i),getValOfBaseType(c,s));
+        }
+
+        if (req.params().size() > 0) {
+            return method.invoke(parent, req.params().values().toArray());
+        }else {
+            return method.invoke(parent, buildDefParamArr(types));
+        }
+
     }
 
-    private Object invoke(Method method, Object object) {
-        try {
-           return method.invoke(object);
-        } catch (IllegalAccessException e) {
-            logger.error(" invoke error:", e);
-        } catch (InvocationTargetException e) {
-            logger.error(" invoke error:", e);
+
+    private Object[] buildDefParamArr(Class<?>[] types) {
+        Object[] tArr = new Object[types.length];
+        for (int i = 0; i < types.length; i++) {
+            tArr[i] = getOfParamType(types[i]);
         }
-        return null;
+        return tArr;
+    }
+
+    private Object getOfParamType(Class<?> c){
+        if (c == int.class || c == Integer.class)
+            return new Integer(null);
+        else if (c == long.class || c == Long.class)
+            return new Long(null);
+        else if (c == float.class || c == Float.class)
+            return new Float(null);
+        else if (c == double.class || c == Double.class) {
+            return new Double(null);
+        } else if (c == String.class || c == CharSequence.class) {
+            return new String();
+        }
+        return c;
     }
 
     private Object getValOfBaseType(Class<?> c,String v) {

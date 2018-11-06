@@ -21,4 +21,5 @@ public interface HttpRequest {
 	byte[] bodyBytes();
 	String header(String name);
 	Map<String,String> headers();
+	Map<String,Object> params();
 }

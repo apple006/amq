@@ -146,6 +146,7 @@ public class Router implements HttpHandler {
                     path = delete.value();
                     patterns = delete.patterns();
                     indexes = delete.indexes();
+                    methodParams = Arrays.asList(method.getParameters());
                 } else {
                     return;
                 }
@@ -156,10 +157,12 @@ public class Router implements HttpHandler {
                 if (indexes.length != 0 && indexes.length != parameters.size())
                     throw new IllegalArgumentException("Parameter mismatch. An index must be specified for all parameters, if any.");
                 Route route = new Route(requestType, path);
-                for (int i = 0; i < patterns.length; i++)
+                for (int i = 0; i < patterns.length; i++){
                     route.where(parameters.get(i), patterns[i]);
-                for (int i = 0; i < indexes.length; i++)
+                }
+                for (int i = 0; i < indexes.length; i++){
                     route.where(parameters.get(i), indexes[i]);
+                }
                 boolean isStatic = Modifier.isStatic(method.getModifiers());
                 if (!isStatic && controller == null)
                     throw new IllegalArgumentException("Illegal route. Methods must be declared static for non-instantiated controllers.");
@@ -258,11 +261,10 @@ public class Router implements HttpHandler {
         if(null == req || null == res) return;
         try {
             Object o = find(req.method(), req.uri());
-            if (null != o) o =((Route)o).invoke(req.uri());
+            if (null != o) o =((Route)o).invoke(req);
             if (o instanceof HttpHandler){
                 ((HttpHandler) o).handle(req, res);
             }
-
         } catch (InvocationTargetException | IllegalAccessException e) {
            // throw new RuntimeException("Unable to invoke route action.", e);
             logger.error("Unable to invoke route action.", e);

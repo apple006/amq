@@ -1,8 +1,5 @@
 package com.artlongs.amq.net.http;
 
-import com.artlongs.amq.net.http.aio.AioHttpServer;
-import com.artlongs.amq.net.http.routes.Controller;
-import com.artlongs.amq.net.http.routes.Get;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +11,7 @@ public class App extends Thread {
 	private static Logger logger = LoggerFactory.getLogger(App.class);
 
 	public static void main(String[] args) {
-        //
+      /*  //
 		HttpServer httpServer = new AioHttpServer(new HttpServerConfig());
         //
         Controller controller= new Controller() {
@@ -38,7 +35,7 @@ public class App extends Thread {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        }
+        }*/
 
     }
 

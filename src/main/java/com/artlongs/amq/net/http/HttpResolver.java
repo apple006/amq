@@ -79,6 +79,7 @@ public class HttpResolver {
 			if(x>0) {
 				req.uri = uri.substring(0,x);
 				req.query = uri.substring(++x);
+				parserReqParams(req.query);
 			}else {
 				req.uri = uri;
 			}
@@ -110,7 +111,28 @@ public class HttpResolver {
 	private void resolveBody(StringBuilder data) {
 		if (state != ReadState.BODY) return;
 		req.bodyBytes = data.toString().getBytes();
+		/*int idx = data.indexOf("; ");
+		String paramChars = data.substring(idx+2);
+		parserPostParams(paramChars);*/
 		state = ReadState.END;
+	}
+
+	private void parserReqParams(String paramStr) {
+		if (paramStr.length() <= 0) return;
+		String[] paramArr = paramStr.split("&");
+		for (String kvStr : paramArr) {
+			String[] kv = kvStr.split("=");
+			req.params.put(kv[0], kv[1]);
+		}
+	}
+
+	private void parserPostParams(String paramStr) {
+		if (paramStr.length() <=0) return;
+		String[] paramArr = paramStr.split(";");
+		for (String kvStr : paramArr) {
+			String[] kv = kvStr.split("=");
+			req.params.put(kv[0], kv[1]);
+		}
 	}
 
 }

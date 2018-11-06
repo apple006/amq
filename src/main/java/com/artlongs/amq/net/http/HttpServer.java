@@ -27,11 +27,13 @@ public interface HttpServer extends Runnable {
 	void writer(Writer writer);
 	Writer getWriter();
 
-	@Override
-	default void run() {
-		Thread thread = new Thread(this);
-		thread.setDaemon(true);
-		this.start();
-	}
+	void setDaemon(Runnable runnable);
+
+
+
+
+
+
+
 
 }

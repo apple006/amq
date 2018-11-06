@@ -17,6 +17,7 @@ public class Request implements HttpRequest {
 	public String query;
 	public byte[] bodyBytes;
 	public final Map<String,String> headers = new HashMap<>();
+	public final Map<String,Object> params = new HashMap<>();
 
 	@Override
 	public String uri() {
@@ -42,6 +43,12 @@ public class Request implements HttpRequest {
 	public Map<String, String> headers() {
 		return headers;
 	}
+
+	@Override
+	public Map<String, Object> params() {
+		return params;
+	}
+
 	@Override
 	public String bodyString() {
 		return String.valueOf(bodyBytes);
