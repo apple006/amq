@@ -3,6 +3,7 @@
 
 # ide project file
 .idea\*
+.idea\**
 
 
 # Log file

@@ -1,11 +1,11 @@
 package disruptor;
 
-import com.artlongs.amq.disruptor.RingBuffer;
-import com.artlongs.amq.disruptor.dsl.Disruptor;
-import com.artlongs.amq.net.http.HttpRequest;
-import com.artlongs.amq.net.http.HttpResponse;
-import com.artlongs.amq.net.http.HttpServerConfig;
-import com.artlongs.amq.net.http.aio.AioHttpServer;
+import com.artlongs.amq.server.disruptor.RingBuffer;
+import com.artlongs.amq.server.disruptor.dsl.Disruptor;
+import com.artlongs.amq.server.net.http.HttpRequest;
+import com.artlongs.amq.server.net.http.HttpResponse;
+import com.artlongs.amq.server.net.http.HttpServerConfig;
+import com.artlongs.amq.server.net.http.aio.AioHttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +65,7 @@ public class HttpEventTest {
 
         // Get the ring buffer from the Disruptor to be used for publishing.
         RingBuffer<HttpEvent> ringBuffer = disruptor.getRingBuffer();
-        // Get the request then publish event and translate data
+        // Get the request then publish event and translate write
         httpServer.handler((HttpRequest req, HttpResponse resp) -> {
             ringBuffer.publishEvent(HttpEventTest::translate, req, resp);
         });
@@ -73,7 +73,6 @@ public class HttpEventTest {
         httpServer.start();
 
         while (true) {
-            logger.debug(httpServer.getState().getInfo());
             try {
                 Thread.sleep(5000);
             } catch (InterruptedException e) {

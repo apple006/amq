@@ -16,13 +16,13 @@
 package disruptor;
 
 
-import com.artlongs.amq.disruptor.EventTranslatorOneArg;
-import com.artlongs.amq.disruptor.RingBuffer;
-import com.artlongs.amq.disruptor.YieldingWaitStrategy;
-import com.artlongs.amq.disruptor.dsl.Disruptor;
-import com.artlongs.amq.disruptor.dsl.ProducerType;
+import com.artlongs.amq.server.disruptor.EventTranslatorOneArg;
+import com.artlongs.amq.server.disruptor.RingBuffer;
+import com.artlongs.amq.server.disruptor.YieldingWaitStrategy;
+import com.artlongs.amq.server.disruptor.dsl.Disruptor;
+import com.artlongs.amq.server.disruptor.dsl.ProducerType;
 import disruptor.support.PerfTestContext;
-import com.artlongs.amq.disruptor.util.DaemonThreadFactory;
+import com.artlongs.amq.server.disruptor.util.DaemonThreadFactory;
 import disruptor.support.PerfTestUtil;
 import disruptor.support.ValueAdditionEventHandler;
 import disruptor.support.ValueEvent;

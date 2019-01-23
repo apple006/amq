@@ -52,7 +52,7 @@ final class ZipFileIterator {
     /**
      * Create a new {@code ZipFileIterator} instance.
      *
-     * @param zipFile The ZIP file used to iterate over all entries
+     * @param file The ZIP file used to iterate over all entries
      * @param entryNameFilter (optional) file name filter. Only entry names starting with
      * one of the specified names in the filter are returned
      */

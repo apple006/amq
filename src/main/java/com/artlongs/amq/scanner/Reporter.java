@@ -27,12 +27,12 @@ package com.artlongs.amq.scanner;
  * This interface is a so called "Single Abstract Method" (SAM) or "Functional Interface", so
  * can be used as a Lambda in Java 8 (see examples).
  *
- * @see Builder#report(eu.infomas.annotation.Reporter) 
+ * @see Builder#
  *
  * @author <a href="mailto:rmuller@xiam.nl">Ronald K. Muller</a>
  * @since annotation-detector 3.1.0
  */
-public interface Reporter {
+public interface Reporter<T> {
 
     /**
      * This method is called when an {@code Annotation} is detected. Invoke methods on the
@@ -40,6 +40,6 @@ public interface Reporter {
      * {@code Annotation}.
      *
      */
-    void report(Cursor cursor);
+    T report(Cursor cursor);
 
 }

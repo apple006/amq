@@ -1,9 +1,10 @@
 package disruptor;
 
-import com.artlongs.amq.disruptor.RingBuffer;
-import com.artlongs.amq.disruptor.dsl.Disruptor;
+import com.artlongs.amq.server.disruptor.RingBuffer;
+import com.artlongs.amq.server.disruptor.dsl.Disruptor;
 
 import java.nio.ByteBuffer;
+import java.util.Date;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -35,6 +36,10 @@ public class LongEventMain
 
     public static void main(String[] args) throws Exception
     {
+        Date date = new Date(System.nanoTime());
+        System.err.println("d1=" +System.nanoTime());
+        System.err.println("d2=" +new Date().getTime());
+
         // Executor that will be used to construct new threads for consumers
         Executor executor = Executors.newCachedThreadPool();
 
@@ -60,5 +65,7 @@ public class LongEventMain
             ringBuffer.publishEvent(LongEventMain::translate, bb);
             Thread.sleep(1000);
         }
+
+
     }
 }

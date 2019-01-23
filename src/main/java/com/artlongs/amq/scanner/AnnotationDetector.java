@@ -41,7 +41,7 @@ import java.util.logging.Logger;
  * <p>
  * A Java Class File consists of a stream of 8-bit bytes. All 16-bit, 32-bit, and 64-bit
  * quantities are constructed by reading in two, four, and eight consecutive 8-bit
- * bytes, respectively. Multi byte data items are always stored in big-endian order,
+ * bytes, respectively. Multi byte write items are always stored in big-endian order,
  * where the high bytes come first. In the Java platforms, this format is
  * supported by interfaces {@link DataInput} and {@link java.io.DataOutput}.
  * <p>
@@ -101,6 +101,7 @@ import java.util.logging.Logger;
  *
  * @author <a href="mailto:rmuller@xiam.nl">Ronald K. Muller</a>
  * @since annotation-detector 3.0.0
+ * https://github.com/rmuller/infomas-asl/tree/master/annotation-detector
  */
 public final class AnnotationDetector implements Builder, Cursor {
 
@@ -296,19 +297,12 @@ public final class AnnotationDetector implements Builder, Cursor {
     }
 
     /**
-     * See {@link Builder#collect(ReporterFunction) }.
+     * See {@link Builder#collect(Reporter) }.
      */
     @Override
-    public <T> List<T> collect(final ReporterFunction<T> reporter) throws IOException {
+    public <T> List<T> collect(final Reporter<T> reporter) throws IOException {
         final List<T> list = new ArrayList<T>();
-        this.reporter = new Reporter() {
-
-            @Override
-            public void report(Cursor cursor) {
-                list.add(reporter.report(cursor));
-            }
-
-        };
+        this.reporter = (Cursor cursor)->list.add(reporter.report(cursor));
         detect(cfIterator);
         return list;
     }
