@@ -16,8 +16,8 @@
 package disruptor.support;
 
 
-import com.artlongs.amq.server.disruptor.BatchStartAware;
-import com.artlongs.amq.server.disruptor.EventHandler;
+import com.artlongs.amq.disruptor.BatchStartAware;
+import com.artlongs.amq.disruptor.EventHandler;
 import disruptor.util.PaddedLong;
 
 import java.util.concurrent.CountDownLatch;

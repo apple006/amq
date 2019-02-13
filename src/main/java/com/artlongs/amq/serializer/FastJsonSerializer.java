@@ -1,7 +1,7 @@
 package com.artlongs.amq.serializer;
 
 import com.alibaba.fastjson.JSON;
-import com.artlongs.amq.server.core.Message;
+import com.artlongs.amq.core.Message;
 import com.artlongs.amq.tools.io.Buffers;
 
 import java.io.Serializable;

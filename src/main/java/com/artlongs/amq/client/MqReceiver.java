@@ -1,6 +1,6 @@
 package com.artlongs.amq.client;
 
-import com.artlongs.amq.server.core.Message;
+import com.artlongs.amq.core.Message;
 
 /**
  * Func :
