@@ -90,12 +90,34 @@ public class IOUtils {
      * Aio write data
      * @param client
      * @param buffer
-     * @param completionHandler
      */
-    public static void write(AsynchronousSocketChannel client, ByteBuffer buffer, CompletionHandler completionHandler) {
-        buffer.rewind();
-        client.write(buffer, null, completionHandler);
+    public static boolean write(AsynchronousSocketChannel client, ByteBuffer buffer) {
+        try {
+            buffer.rewind();
+            client.write(buffer, null, newWriteHandler());
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
+
+    public static CompletionHandler newWriteHandler(){
+        CompletionHandler writeHandler = new CompletionHandler() {
+            @Override
+            public void completed(Object result, Object attachment) {
+
+            }
+
+            @Override
+            public void failed(Throwable exc, Object attachment) {
+
+            }
+        };
+        return writeHandler;
+    }
+
+
 
     public static void closeChannel(SocketChannel channel) {
         try {
@@ -131,6 +153,12 @@ public class IOUtils {
         }
         return null;
     }
+
+    public static String getRemoteAddressStr(NetworkChannel channel) {
+
+        return getRemoteAddress(channel).toString();
+    }
+
 
 
 }

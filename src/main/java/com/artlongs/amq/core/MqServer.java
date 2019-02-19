@@ -15,7 +15,7 @@ public interface MqServer extends Channel,Runnable {
      * 客户端socket map
      *  key: (ip+":"+port)
      */
-    Map<String, NetworkChannel> clientSocketMap = new HashMap<>();
+    Map<String, NetworkChannel> clientSocketMap = new HashMap<>(20);
     void regClient(NetworkChannel channel);
     //
     void start();

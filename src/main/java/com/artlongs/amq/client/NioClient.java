@@ -1,9 +1,8 @@
-package com.artlongs.amq.server.mq;
+package com.artlongs.amq.client;
 
 import com.artlongs.amq.serializer.ISerializer;
 import com.artlongs.amq.core.Message;
 import com.artlongs.amq.core.MqConfig;
-import com.artlongs.amq.disruptor.util.DaemonThreadFactory;
 import com.artlongs.amq.tools.FastList;
 import com.artlongs.amq.tools.IOUtils;
 import com.artlongs.amq.tools.ID;
@@ -248,11 +247,20 @@ public class NioClient implements Runnable {
     }
 
 
-    public <T> byte[] buildMessage(T data) {
-        Message.Key mKey = new Message.Key(ID.ONLY.id(), "hello", Message.SPREAD.TOPIC);
+    public <T> byte[] buildMessage(String topic,T data,Message.SPREAD spread) {
+        Message.Key mKey = new Message.Key(ID.ONLY.id(), topic, spread);
         String node = IOUtils.getLocalAddress(channel);
         mKey.setSendNode(node);
         Message message = Message.ofDef(mKey, data);
+        return serializer.toByte(message);
+    }
+
+    public <T> byte[] buildSubscribe(String topic,T data) {
+        Message.Key mKey = new Message.Key(ID.ONLY.id(), topic, Message.SPREAD.TOPIC);
+        String node = IOUtils.getLocalAddress(channel);
+        mKey.setSendNode(node);
+        Message message = Message.ofDef(mKey, data);
+        message.setSubscribe(true);
         return serializer.toByte(message);
     }
 
@@ -304,7 +312,7 @@ public class NioClient implements Runnable {
             pool.submit(t);
 
             RspHandler handler = new RspHandler();
-            client.send(client.buildMessage("hello"), handler);
+            client.send(client.buildMessage("topic_hello","hello,leeton",Message.SPREAD.TOPIC), handler);
             handler.waitForResponse();
 
 

@@ -5,57 +5,20 @@
     <groupId>com.artlongs</groupId>
     <artifactId>artlongs-amq</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.0</version>
+    <version>0.0.1-snapshot</version>
     <name>artlongs-amq</name>
-
-    <repositories>
-        <!-- 本地私服 -->
-        <repository>
-            <id>thirdparty</id>
-            <name>thirdparty</name>
-            <url>http://172.28.1.4:8081/nexus/content/repositories/thirdparty/</url>
-        </repository>
-        <repository>
-            <id>releases</id>
-            <name>Release Repository</name>
-            <url>http://172.28.1.4:8081/nexus/content/repositories/releases</url>
-        </repository>
-        <repository>
-            <id>snapshots</id>
-            <name>Snapshot Repository</name>
-            <url>http://172.28.1.4:8081/nexus/content/repositories/snapshots</url>
-        </repository>
-        <repository>
-            <id>debop-releases-bintray</id>
-            <url>http://dl.bintray.com/debop/maven</url>
-        </repository>
-    </repositories>
-    <!-- 发布配置 -->
-    <distributionManagement>
-        <repository>
-            <id>releases</id>
-            <name>Release Repository</name>
-            <url>http://172.28.1.4:8081/nexus/content/repositories/releases</url>
-        </repository>
-        <snapshotRepository>
-            <id>snapshots</id>
-            <name>Snapshot Repository</name>
-            <url>http://172.28.1.4:8081/nexus/content/repositories/snapshots</url>
-        </snapshotRepository>
-    </distributionManagement>
-
 
     <properties>
         <jdk.version>1.8</jdk.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>4.12</junit.version>
         <joda-time.version>2.9.3</joda-time.version>
-        <guava.version>19.0</guava.version>
+        <guava.version>15.0</guava.version>
         <jackson.version>2.8.9</jackson.version>
         <slf4j.version>1.7.5</slf4j.version>
         <log4j.version>1.2.17</log4j.version>
         <logback.version>1.1.2</logback.version>
-
+        <mapdb.version>3.0.7</mapdb.version>
     </properties>
 
     <dependencies>
@@ -77,31 +40,19 @@
             <version>${joda-time.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
-        </dependency>
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>io.github.classgraph</groupId>
-            <artifactId>classgraph</artifactId>
-            <version>LATEST</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.zaxxer</groupId>
-            <artifactId>nuprocess</artifactId>
-            <version>1.2.4</version>
         </dependency>
         <dependency>
             <groupId>org.osgl</groupId>
             <artifactId>osgl-tool</artifactId>
             <version>1.19.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapdb</groupId>
+            <artifactId>mapdb</artifactId>
+            <version>${mapdb.version}</version>
         </dependency>
 
     </dependencies>

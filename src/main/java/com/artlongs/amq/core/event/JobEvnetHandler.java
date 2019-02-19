@@ -1,5 +1,6 @@
-package com.artlongs.amq.core;
+package com.artlongs.amq.core.event;
 
+import com.artlongs.amq.core.ProcessorImpl;
 import com.artlongs.amq.disruptor.EventHandler;
 
 /**
@@ -11,8 +12,8 @@ public class JobEvnetHandler implements EventHandler<JobEvent> {
 
     @Override
     public void onEvent(JobEvent event, long sequence, boolean endOfBatch) throws Exception {
-        // TODO: 消息处理及发送
-        System.err.println(" 收到 ringbuffer 的事件");
+        System.err.println(" 执行 JOB 分派 ......");
+        ProcessorImpl.INST.publishJobToWorker(event.getMessage());
 
     }
 }

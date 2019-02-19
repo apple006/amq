@@ -3,9 +3,10 @@ package com.artlongs.amq.core;
 import com.alibaba.fastjson.JSON;
 import com.artlongs.amq.tools.DateUtils;
 import com.artlongs.amq.tools.ID;
+import org.osgl.util.C;
 
 import java.io.Serializable;
-import java.util.List;
+import java.util.Set;
 
 /**
  * FUNC: Mq message
@@ -14,15 +15,16 @@ import java.util.List;
 public class Message<K extends Message.Key, V> implements KV<K, V> {
     private static final long serialVersionUID = 1L;
 
-    private Message() {
+    protected Message() {
     }
 
     ////=============================================
     private Key k;
     private V v; // centent body
     private Stat stat;
-    private boolean subscribe;
+    private Boolean subscribe;
     private Subscribe.Life life;
+    private boolean acked;
 
     ////=============================================
     public static <V> Message ofDef(Key k, V v) {
@@ -30,6 +32,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         Message m = new Message();
         m.k = k;
         m.v = v;
+        m.subscribe = false;
         Stat stat = new Stat()
                 .setCtime(now)
                 .setMtime(now)
@@ -39,28 +42,60 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         m.stat = stat;
         return m;
     }
-    public static <V> Message ofSubscribe(Key k, V v,boolean subscribe) {
+
+    public static Message empty() {
+        Message m = new Message();
+        return m;
+    }
+
+    public static <V> Message ofSubscribe(Key k, V v, boolean subscribe) {
         return ofDef(k, v).setSubscribe(subscribe);
     }
 
+    public void upStatOfSended(String node) {
+        Stat stat = getStat();
+        if (null == stat.nodesDelivered) {
+            stat.nodesDelivered = C.newSet();
+        }
+        stat.nodesDelivered.add(node);
+        stat.setMtime(System.currentTimeMillis());
+        stat.setOn(Message.ON.SENED);
+    }
+
+    public void upStatOfACK(String node) {
+        Stat stat = getStat();
+        if (null == stat.nodesConfirmed) {
+            stat.nodesConfirmed = C.newSet();
+        }
+        stat.nodesConfirmed.add(node);
+        stat.setMtime(System.currentTimeMillis());
+        stat.setOn(Message.ON.SENED);
+    }
+
+    public int getAckedSize(){
+        if(null == this.getStat()) return 0;
+        if(null == this.getStat().getNodesConfirmed()) return 0;
+        return this.getStat().getNodesConfirmed().size();
+    }
+
+    /**
+     * 确认收到信息
+     *
+     * @return
+     */
+    public Message ofACK() {
+        this.acked = true;
+        this.k.spread = null;
+        this.k.sendNode = null;
+        this.k.recNode = null;
+        this.k.topic = null;
+        this.stat = null;
+        this.life = null;
+        this.v = null;
+        return this;
+    }
+
     ////=============================================
-    public Message<K, V> setK(Key k) {
-        this.k = k;
-        return this;
-    }
-
-    public Message<K, V> setV(V v) {
-        this.v = v;
-        return this;
-    }
-
-    public Key getK() {
-        return k;
-    }
-
-    public V getV() {
-        return v;
-    }
 
     @Override
     public V get(K k) {
@@ -75,7 +110,34 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         return this;
     }
 
-    public boolean isSubscribe() {
+    public Key getK() {
+        return k;
+    }
+
+    public Message<K, V> setK(Key k) {
+        this.k = k;
+        return this;
+    }
+
+    public V getV() {
+        return v;
+    }
+
+    public Message<K, V> setV(V v) {
+        this.v = v;
+        return this;
+    }
+
+    public Stat getStat() {
+        return stat;
+    }
+
+    public Message<K, V> setStat(Stat stat) {
+        this.stat = stat;
+        return this;
+    }
+
+    public Boolean isSubscribe() {
         return subscribe;
     }
 
@@ -90,6 +152,15 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
     public Message<K, V> setLife(Subscribe.Life life) {
         this.life = life;
+        return this;
+    }
+
+    public boolean isAcked() {
+        return acked;
+    }
+
+    public Message<K, V> setAcked(boolean acked) {
+        this.acked = acked;
         return this;
     }
 
@@ -140,6 +211,12 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             setId(id);
             return id;
         }
+
+        public boolean isSelf(String sendNode) {
+            return this.getSendNode().equals(sendNode);
+        }
+
+        //==============================================================
 
         public String getId() {
             return id;
@@ -201,8 +278,8 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         private Long mtime; //modify time
         private long delay; //延迟发送
         private int retry; //重试次数
-        private List<String> nodesDelivered; // 已送达
-        private List<String> nodesConfirmed; // 已确认
+        private Set<String> nodesDelivered; // 已送达
+        private Set<String> nodesConfirmed; // 已确认
 
         public ON getOn() {
             return on;
@@ -258,20 +335,20 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             return this;
         }
 
-        public List<String> getNodesDelivered() {
+        public Set<String> getNodesDelivered() {
             return nodesDelivered;
         }
 
-        public Stat setNodesDelivered(List<String> nodesDelivered) {
+        public Stat setNodesDelivered(Set<String> nodesDelivered) {
             this.nodesDelivered = nodesDelivered;
             return this;
         }
 
-        public List<String> getNodesConfirmed() {
+        public Set<String> getNodesConfirmed() {
             return nodesConfirmed;
         }
 
-        public Stat setNodesConfirmed(List<String> nodesConfirmed) {
+        public Stat setNodesConfirmed(Set<String> nodesConfirmed) {
             this.nodesConfirmed = nodesConfirmed;
             return this;
         }
@@ -286,7 +363,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
      * Message status
      */
     public enum ON {
-        SENED, QUENED, ACKED, DONE;
+        QUENED, SENDING,SENDONFAIL, SENED, ACKED, DONE;
     }
 
     /**
@@ -300,6 +377,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     public static void main(String[] args) {
         Message msg = new Message().ofDef(new Key(ID.ONLY.id(), "quene", SPREAD.FANOUT), "hello");
         System.err.println("msg=" + msg);
+        System.err.println("ack=" + msg.ofACK());
     }
 
 

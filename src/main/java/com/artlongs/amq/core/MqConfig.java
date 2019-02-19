@@ -36,5 +36,11 @@ public class MqConfig {
 	// socket 连接超时(秒)
 	public static int connect_timeout = 3;
 	public static int clinet_send_max = 30;
+	// 间隔x秒,重发消息如果消息没有确认收到
+	public static int msg_not_acked_resend_period = 30;
+
+
+	// MAPDB 数据库文件
+	public static final String mapdb_file_path = "/volumes/work/mapdb/";
 
 }

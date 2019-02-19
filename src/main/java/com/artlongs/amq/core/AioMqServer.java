@@ -17,14 +17,14 @@ import java.util.concurrent.Executors;
  *
  * @author: leeton on 2019/1/18.
  */
-public class AioServer implements MqServer {
-    private static Logger logger = LoggerFactory.getLogger(AioServer.class);
+public class AioMqServer implements MqServer {
+    private static Logger logger = LoggerFactory.getLogger(AioMqServer.class);
 
     protected MqConfig config;
     private ExecutorService connectThreadPool;
     private AsynchronousServerSocketChannel serverSocket = null;
 
-    public AioServer(MqConfig config) {
+    public AioMqServer(MqConfig config) {
         this.config = config;
     }
 
@@ -79,7 +79,8 @@ public class AioServer implements MqServer {
 
     @Override
     public void regClient(NetworkChannel channel) {
-        clientSocketMap.putIfAbsent(getClientAddr(channel).toString(), channel);
+        String key = getClientAddr(channel).toString();
+        clientSocketMap.putIfAbsent(key, channel);
     }
 
     private InetSocketAddress getClientAddr(NetworkChannel channel) {
@@ -102,7 +103,7 @@ public class AioServer implements MqServer {
     }
 
     public static void main(String[] args) {
-        new AioServer(new MqConfig()).start();
+        new AioMqServer(new MqConfig()).start();
 
     }
 

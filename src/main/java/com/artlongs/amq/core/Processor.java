@@ -1,9 +1,13 @@
 package com.artlongs.amq.core;
 
+import com.artlongs.amq.tools.FastList;
+
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousSocketChannel;
+import java.nio.channels.NetworkChannel;
+import java.util.List;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Future;
 
 /**
  * Func : 消息处理中心
@@ -12,21 +16,24 @@ import java.util.concurrent.Future;
  */
 public interface Processor {
 
+    ConcurrentMap<String, ByteBuffer> onData(AsynchronousSocketChannel channel ,ByteBuffer buffer);
+
     Buffer getBuffer(String msgId);
 
-    ConcurrentMap<String, ByteBuffer> add(ByteBuffer buffer);
+    Message parser(ByteBuffer buffer);
 
-    Message doParser(ByteBuffer buffer);
+    void publishJobToWorker(Message message);
 
-    void doMatch(Message message);
+    FastList<Subscribe> subscribeOfTopic(String topic);
 
-    Future toStore(Message message);
+    FastList<Subscribe> subscribeOfDirect(String directTopic);
 
-    void buildJob(Message message);
+    void sendMessageToSubcribe(List<Subscribe> subscribeList, Message message);
 
-    void sendJobToRingBuffer(Message message);
+    void sendMessageOfFanout(Message message);
 
-    Future ackJob(Message message);
+    NetworkChannel getTargetChannel(String keyOfChannel);
+
 
 
 }

@@ -1,6 +1,5 @@
 package com.artlongs.amq.core;
 
-import com.artlongs.amq.tools.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +36,7 @@ public class AioMqAcceptHandler implements CompletionHandler<AsynchronousSocketC
 //		client.read(byteBuf,config.read_wait_timeout,TimeUnit.SECONDS,byteBuf, new AioMqWriteHandler(server,client));
         this.client = client;
         client.read(byteBuf, config.read_wait_timeout, TimeUnit.SECONDS, byteBuf, new Reader(client));
-        serverSocket.accept(attachment, this); // 循环调用自身
+        serverSocket.accept(attachment, this); // 循环调用自身,以待一次接收信息
     }
 
     @Override
@@ -49,6 +48,8 @@ public class AioMqAcceptHandler implements CompletionHandler<AsynchronousSocketC
 
         private AsynchronousSocketChannel channel;
 
+        private Processor processor = ProcessorImpl.INST;
+
         public Reader(AsynchronousSocketChannel channel) {
             this.channel = channel;
         }
@@ -56,10 +57,12 @@ public class AioMqAcceptHandler implements CompletionHandler<AsynchronousSocketC
         @Override
         public void completed(Integer result, ByteBuffer buffer) {
             show(buffer);
-            // 把收到的数据加入到消息处理中心
-            ProcessorImpl.INST.add(buffer);
             // 测试把消息回传到客户端
-            IOUtils.write(client, buffer, writeHandler);
+//            IOUtils.write(client, buffer);
+
+            // 把收到的数据加入到消息处理中心
+            processor.onData(channel,buffer);
+
         }
 
         @Override
@@ -74,16 +77,6 @@ public class AioMqAcceptHandler implements CompletionHandler<AsynchronousSocketC
     }
 
 
-    private final CompletionHandler writeHandler = new CompletionHandler() {
-        @Override
-        public void completed(Object result, Object attachment) {
 
-        }
-
-        @Override
-        public void failed(Throwable exc, Object attachment) {
-
-        }
-    };
 
 }

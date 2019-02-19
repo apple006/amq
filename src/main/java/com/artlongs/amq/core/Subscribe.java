@@ -1,6 +1,8 @@
 package com.artlongs.amq.core;
 
 import java.nio.channels.NetworkChannel;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Func :订阅
@@ -25,12 +27,20 @@ public class Subscribe {
     /**
      * 订阅的生命周期
      */
-    public enum Life{
-        LONG,
-        SPARK;
+    public enum Life{ LONG, SPARK;}
+
+    public void remove(List<Subscribe> subscribeList,Subscribe target) {
+        Iterator<Subscribe> iterable = subscribeList.iterator();
+        while (iterable.hasNext()) {
+            Subscribe item = iterable.next();
+            if (item.equals(item)) {
+                subscribeList.remove(target);
+            }
+        }
+
     }
 
-    //================
+    //================================ 我的貂婵在那里 ================================================
 
 
     public String getId() {

@@ -16,24 +16,32 @@ public class FastJsonSerializer implements ISerializer {
         return JSON.toJSONBytes(obj);
     }
 
-
-    @Override
-    public <T extends Serializable>  T getObj(ByteBuffer byteBuffer) {
-        byteBuffer.rewind(); // 重置position,有可能 buffer 在之前已经被读取过
-        final int remaining = byteBuffer.remaining();
-        byte[] bytes = new byte[remaining];
-        if (byteBuffer.isDirect()) {
-           bytes = Buffers.take(byteBuffer);
-        }else {
-            bytes = byteBuffer.array();
-        }
-        T obj = JSON.parseObject(bytes,Message.class);
-        return obj;
+    public Message getObj(byte[] bytes) {
+        return JSON.parseObject(bytes,Message.class);
     }
 
 
     @Override
-    public <T extends Serializable>  T getObj(ByteBuffer byteBuffer, Class<T> clzz) {
+    public Message getObj(ByteBuffer byteBuffer) {
+        byteBuffer.rewind(); // 重置 position,有可能 buffer 在之前已经被读取过
+        final int remaining = byteBuffer.remaining();
+        if (remaining > 0) {
+            byte[] bytes = new byte[remaining];
+            if (byteBuffer.isDirect()) {
+                bytes = Buffers.take(byteBuffer);
+            }else {
+                bytes = byteBuffer.array();
+            }
+            Message obj = JSON.parseObject(bytes,Message.class);
+            return obj;
+        }
+        return Message.empty();
+
+    }
+
+
+    @Override
+    public <T extends Serializable> T getObj(ByteBuffer byteBuffer, Class<T> clzz) {
         T obj = JSON.parseObject(byteBuffer.array(), clzz);
         return obj;
     }

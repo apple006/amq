@@ -1,4 +1,4 @@
-package com.artlongs.amq.server.mq;
+package com.artlongs.amq.server.idea;
 
 import com.artlongs.amq.tools.IOUtils;
 
