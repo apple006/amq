@@ -1,6 +1,7 @@
 package com.artlongs.amq.client;
 
 import com.artlongs.amq.client.NioClient;
+import com.artlongs.amq.core.Message;
 import com.artlongs.amq.core.MqConfig;
 
 import java.io.IOException;
@@ -22,8 +23,10 @@ public class TestRec2 {
         pool.submit(t);
 
         NioClient.RspHandler handler = new NioClient.RspHandler();
-        client.send(client.buildSubscribe("topic_hello",null), handler);
-        handler.waitForResponse();
+//        client.send(client.buildSubscribe("topic_hello",null), handler);
+        client.send(client.buildAcked("2019021914534240901"), handler);
+        Message message = handler.waitForResponse();
+        //
 
     }
 }

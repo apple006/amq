@@ -77,12 +77,6 @@ public class AioMqServer implements MqServer {
         return serverSocket;
     }
 
-    @Override
-    public void regClient(NetworkChannel channel) {
-        String key = getClientAddr(channel).toString();
-        clientSocketMap.putIfAbsent(key, channel);
-    }
-
     private InetSocketAddress getClientAddr(NetworkChannel channel) {
         return IOUtils.getRemoteAddress(channel);
     }

@@ -2,8 +2,6 @@ package com.artlongs.amq.core;
 
 import java.nio.channels.Channel;
 import java.nio.channels.NetworkChannel;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Func :
@@ -11,13 +9,6 @@ import java.util.Map;
  */
 public interface MqServer extends Channel,Runnable {
 
-    /**
-     * 客户端socket map
-     *  key: (ip+":"+port)
-     */
-    Map<String, NetworkChannel> clientSocketMap = new HashMap<>(20);
-    void regClient(NetworkChannel channel);
-    //
     void start();
     void shutdown();
     void daemon(Runnable runnable);

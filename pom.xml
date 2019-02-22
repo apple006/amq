@@ -54,7 +54,6 @@
             <artifactId>mapdb</artifactId>
             <version>${mapdb.version}</version>
         </dependency>
-
     </dependencies>
 
     <build>

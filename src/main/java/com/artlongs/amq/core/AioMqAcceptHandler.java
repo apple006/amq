@@ -29,7 +29,6 @@ public class AioMqAcceptHandler implements CompletionHandler<AsynchronousSocketC
 
     @Override
     public void completed(AsynchronousSocketChannel client, Void attachment) {
-        server.regClient(client); // 注册客户端 channel
 //		serverSocket.accept(attachment, this);
 //		ByteBuffer byteBuf = ByteBuffer.allocate(256);// 内部堆 heap buffer
         ByteBuffer byteBuf = config.mq_buffer_pool.allocate().getResource(); // 分配外部 direct buffer

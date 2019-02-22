@@ -20,11 +20,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.NetworkChannel;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Func : 消息处理中心
@@ -38,16 +38,21 @@ public enum ProcessorImpl implements Processor {
     /**
      * 从客户端读取到的数据缓存 map(messageId,ByteBuffer)
      */
-    public static ConcurrentMap<String, ByteBuffer> cache_buffer = new ConcurrentHashMap<>(128);
+    public static ConcurrentSkipListMap<String, ByteBuffer> cache_buffer = new ConcurrentSkipListMap();
     /**
      * 从客户端读取到的数据缓存 map(messageId,Message)
      */
-    public static ConcurrentMap<String, Message> cache_message = new ConcurrentHashMap<>(128);
+    public static ConcurrentSkipListMap<String, Message> cache_all_message =   new ConcurrentSkipListMap();
+
+    /**
+     * 发送失败的消息数据缓存 map(messageId,Message)
+     */
+    public static ConcurrentSkipListMap<String, Message> cache_falt_message =   new ConcurrentSkipListMap();
 
     /**
      * 客户端订阅的主题 map(messageId,Subscribe)
      */
-    public static ConcurrentMap<String, Subscribe> subscribe = new ConcurrentHashMap<>(128);
+    public static ConcurrentSkipListMap<String, Subscribe> subscribe =   new ConcurrentSkipListMap();
 
     public static ISerializer json = ISerializer.Serializer.INST.of();
 
@@ -69,6 +74,12 @@ public enum ProcessorImpl implements Processor {
 
     // 消息持久化 worker pool
     private final WorkerPool<JobEvent> persistent_worker_pool;
+    // scheduled to resend message
+    final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+    final Runnable beeper = ()-> System.out.println("The scheduler task is running!");
+
+
+
 
     public ProcessorImpl me(){
         return this;
@@ -80,6 +91,12 @@ public enum ProcessorImpl implements Processor {
         this.persistent_worker_pool = createWorkerPool(new StoreEventHandler());
         this.buz_worker = buz_worker_pool.start(Executors.newFixedThreadPool(NUM_WORKERS, DaemonThreadFactory.INSTANCE));
         this.persistent_worker = persistent_worker_pool.start(Executors.newFixedThreadPool(NUM_WORKERS, DaemonThreadFactory.INSTANCE));
+
+        final ScheduledFuture<?> delaySend = scheduler.scheduleWithFixedDelay(
+                delaySendOnScheduled(), 5, MqConfig.msg_not_acked_resend_period, SECONDS);
+
+        final ScheduledFuture<?> retrySend = scheduler.scheduleWithFixedDelay(
+                retrySendOnScheduled(), 5, MqConfig.msg_falt_message_resend_period, SECONDS);
     }
 
     /**
@@ -95,7 +112,7 @@ public enum ProcessorImpl implements Processor {
                         WORKER_BUFFER_SIZE,
                         DaemonThreadFactory.INSTANCE,
                         ProducerType.SINGLE,
-                        new YieldingWaitStrategy());
+                        new SleepingWaitStrategy());
         disruptor.handleEventsWith(jobEvnetHandler);
         return disruptor;
     }
@@ -107,7 +124,8 @@ public enum ProcessorImpl implements Processor {
      */
     private WorkerPool<JobEvent> createWorkerPool(WorkHandler workHandler) {
 
-        final RingBuffer<JobEvent> ringBuffer = RingBuffer.createSingleProducer(JobEvent.EVENT_FACTORY, WORKER_BUFFER_SIZE, new YieldingWaitStrategy());
+        final RingBuffer<JobEvent> ringBuffer = RingBuffer.createSingleProducer(JobEvent.EVENT_FACTORY,
+                WORKER_BUFFER_SIZE, new BlockingWaitStrategy());
 
         WorkerPool<JobEvent> workerPool = new WorkerPool<JobEvent>(ringBuffer, ringBuffer.newBarrier(), new FatalExceptionHandler(), workHandler);
 
@@ -119,16 +137,19 @@ public enum ProcessorImpl implements Processor {
     }
 
     @Override
-    public ConcurrentMap<String, ByteBuffer> onData(AsynchronousSocketChannel channel,ByteBuffer buffer) {
+    public Map<String, ByteBuffer> onData(AsynchronousSocketChannel channel, ByteBuffer buffer) {
         Message message = parser(buffer);
-        if (message.isAcked()) { // ack
+        if (message.isAcked()) { // ack msg
             flagOnAck(channel,message);
         }else {
-            addCache(message.getK().getId(), buffer);
-            addCache(message.getK().getId(), message);
-            addSubscribeIF(message);
-            // 发布 JOB 到 RingBuffer
-            pulishJobEvent(message);
+            if(message.isSubscribe()){ // subscribe msg
+                addSubscribeIF(channel,message);
+            }else { // common buz msg
+                addCache(message.getK().getId(), buffer);
+                addCache(message.getK().getId(), message);
+                // pulish message job to RingBuffer
+                pulishJobEvent(message);
+            }
         }
         return cache_buffer;
     }
@@ -139,7 +160,7 @@ public enum ProcessorImpl implements Processor {
     }
 
     public Message getMessageOfCache(String id) {
-       return cache_message.get(id);
+       return cache_all_message.get(id);
     }
 
     private void addCache(String key, ByteBuffer buffer) {
@@ -147,12 +168,19 @@ public enum ProcessorImpl implements Processor {
     }
 
     private void addCache(String key, Message message) {
-        cache_message.putIfAbsent(key, message);
+        cache_all_message.putIfAbsent(key, message);
     }
 
     public void removeCacheOfDone(String key){
         cache_buffer.remove(key);
-        cache_message.remove(key);
+        cache_all_message.remove(key);
+        cache_falt_message.remove(key);
+    }
+
+    public void removeDbDataOfDone(String key) {
+        Store.INST.remove(key);
+        Store.INST.removeOfRetryList(key);
+        Store.INST.removeOfUptime(key);
     }
 
     /**
@@ -170,20 +198,22 @@ public enum ProcessorImpl implements Processor {
 
     private void pulishJobEvent(Message message) {
         try {
-            final CountDownLatch latch = new CountDownLatch(1);
-            message.getStat().setOn(Message.ON.QUENED);
-            job_ringbuffer.publishEvent(JobEvent::translate, message);
-            latch.await();
+            if (!message.isSubscribe()) {
+                final CountDownLatch latch = new CountDownLatch(1);
+                message.getStat().setOn(Message.ON.QUENED);
+                job_ringbuffer.publishEvent(JobEvent::translate, message);
+                latch.await();
+            }
+
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
     }
 
-    private boolean addSubscribeIF(Message message) {
+    private boolean addSubscribeIF(NetworkChannel channel,Message message) {
         if (message.isSubscribe()) {
             String clientKey = message.getK().getSendNode();
-            NetworkChannel channel = getTargetChannel(clientKey);
             Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), channel, message.getLife(), false);
             subscribe.putIfAbsent(clientKey, listen);
             return true;
@@ -237,9 +267,10 @@ public enum ProcessorImpl implements Processor {
         for (Subscribe listen : subscribeList) {
             String msgId = message.getK().getId();
             // remove 掉缓存当客户端全部 ACK
-            int sends = message.getAckedSize();
+            int sends = message.ackedSize();
             if (sends >= subscribeList.size()) {
                 removeCacheOfDone(msgId);
+                removeDbDataOfDone(msgId);
                 return;
             }
 
@@ -255,28 +286,36 @@ public enum ProcessorImpl implements Processor {
         }
     }
 
-    public void sendMessageOfFanout(Message message){
-        for (NetworkChannel channel : MqServer.clientSocketMap.values()) {
-            String msgId = message.getK().getId();
-            // remove 掉缓存当客户端全部 ACK
-            int sends = message.getAckedSize();
-            if (sends >= MqServer.clientSocketMap.size()) {
-                removeCacheOfDone(msgId);
-                return;
+    @Override
+    public Runnable delaySendOnScheduled() {
+        System.out.println("The scheduler task is running delay-send message !");
+        Runnable delay = new Runnable() {
+            @Override
+            public void run() {
+                for (Message message : cache_all_message.values()) {
+                    if(MqConfig.msg_not_acked_resend_max_times > message.getStat().getDelay()){
+                        pulishJobEvent(message);
+                    }
+                }
             }
+        };
+        return delay;
+    }
 
-            String sendNode = IOUtils.getRemoteAddressStr(channel);
-            if (message.getK().isSelf(sendNode)) return;
-            if(isACKED(message,sendNode)) return;
-            //
-            boolean writed = IOUtils.write((AsynchronousSocketChannel) channel, ProcessorImpl.INST.getBuffer(msgId));
-            if (writed) {
-                message.upStatOfSended(sendNode);
-            }else {
-                onSendFailToBackup(message);
+    @Override
+    public Runnable retrySendOnScheduled() {
+        System.out.println("The scheduler task is running retry-send message !");
+        final Runnable retry = new Runnable() {
+            @Override
+            public void run() {
+                for (Message message : cache_falt_message.values()) {
+                    if(MqConfig.msg_falt_message_resend_max_times > message.getStat().getDelay()){
+                        pulishJobEvent(message);
+                    }
+                }
             }
-
-        }
+        };
+        return retry;
     }
 
     private boolean isACKED(Message message, String node) {
@@ -291,7 +330,14 @@ public enum ProcessorImpl implements Processor {
 
     private void onSendFailToBackup(Message message) {
         message.getStat().setOn(Message.ON.SENDONFAIL);
-        Store.INST.saveToRetryList(message.getK().getId(), message);
+        String id = message.getK().getId();
+        Store.INST.saveToRetryList(id, message);
+        cache_all_message.remove(id);
+        cache_falt_message.putIfAbsent(id, message);
+    }
+
+    private void appendSendFaltMessageOfDb(Map<String ,Message> targetMap) {
+        Store.INST.appendOfRetryMap(targetMap);
     }
 
     public void onSendSuccToOption(List<Subscribe>subscribeList,Subscribe listen,Message message){
@@ -301,14 +347,13 @@ public enum ProcessorImpl implements Processor {
         }
     }
 
-    @Override
-    public NetworkChannel getTargetChannel(String keyOfChannel) {
-        return MqServer.clientSocketMap.get(keyOfChannel);
-    }
-
     public void publishJobToWorkerPool(RingBuffer<JobEvent> ringBuffer,Message message){
         ringBuffer.publishEvent(JobEvent::translate, message);
     }
+
+
+
+
 
 
 }

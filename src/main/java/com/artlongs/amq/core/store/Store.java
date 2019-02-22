@@ -10,6 +10,8 @@ import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
 import org.mapdb.serializer.GroupSerializer;
 
+import java.util.Map;
+
 /**
  * Func :
  *
@@ -58,7 +60,7 @@ public enum Store {
         return serializer.getObj(Store.INST.all_data.get(key));
     }
 
-    private void remove(String key) {
+    public void remove(String key) {
         Store.INST.all_data.remove(key);
     }
 
@@ -71,7 +73,7 @@ public enum Store {
         return serializer.getObj(Store.INST.need_retry.get(key));
     }
 
-    private void removeOfRetryList(String key) {
+    public void removeOfRetryList(String key) {
         Store.INST.need_retry.remove(key);
     }
 
@@ -84,13 +86,25 @@ public enum Store {
         return Store.INST.time.get(key);
     }
 
-    private void removeOfUptime(String key) {
+    public void removeOfUptime(String key) {
         Store.INST.time.remove(key);
+    }
+
+    public Map appendOfRetryMap(Map<String ,Message> targetMap) {
+        for (byte[] bytes : need_retry.values()) {
+            Message message = serializer.getObj(bytes);
+            String key = message.getK().getId();
+            if (null != targetMap.get(key)) {
+                targetMap.put(key, message);
+                need_retry.remove(key);
+            }
+        }
+        return targetMap;
     }
 
 
     public static void main(String[] args) {
-        Message msg = Message.ofDef(new Message.Key(ID.ONLY.id(), "quene", Message.SPREAD.FANOUT), "hello,world!");
+        Message msg = Message.ofDef(new Message.Key(ID.ONLY.id(), "quene", Message.SPREAD.TOPIC), "hello,world!");
         Store.INST.save("hello", msg);
         System.err.println(Store.INST.get("hello"));
 

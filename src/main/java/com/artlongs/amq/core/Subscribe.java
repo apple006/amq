@@ -1,5 +1,8 @@
 package com.artlongs.amq.core;
 
+import com.alibaba.fastjson.JSON;
+
+import java.io.Serializable;
 import java.nio.channels.NetworkChannel;
 import java.util.Iterator;
 import java.util.List;
@@ -9,7 +12,9 @@ import java.util.List;
  *
  * @author: leeton on 2019/1/23.
  */
-public class Subscribe {
+public class Subscribe implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String id;
     private String topic;
     private NetworkChannel channel;
@@ -87,4 +92,11 @@ public class Subscribe {
         this.life = life;
         return this;
     }
+
+    @Override
+    public String toString() {
+        return JSON.toJSONString(this);
+    }
+
+
 }

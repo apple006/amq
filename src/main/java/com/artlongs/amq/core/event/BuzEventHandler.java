@@ -27,10 +27,6 @@ public class BuzEventHandler implements WorkHandler<JobEvent> {
                     ProcessorImpl.INST.sendMessageToSubcribe(subscribeList, message);
                     break;
 
-                case FANOUT:
-                    ProcessorImpl.INST.sendMessageOfFanout(message);
-                    break;
-
                 case DIRECT:
                     List<Subscribe> directList = ProcessorImpl.INST.subscribeOfDirect(topic);
                     ProcessorImpl.INST.sendMessageToSubcribe(directList, message);

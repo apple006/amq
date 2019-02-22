@@ -25,7 +25,7 @@ public class TestSender1 {
 
         NioClient.RspHandler handler1 = new NioClient.RspHandler();
         NioClient.RspHandler handler2 = new NioClient.RspHandler();
-        client.send(client.buildMessage("topic_hello","hello,leeton",Message.SPREAD.FANOUT), handler1);
+        client.send(client.buildMessage("topic_hello","hello,leeton",Message.SPREAD.TOPIC), handler1);
         handler1.waitForResponse();
 
 

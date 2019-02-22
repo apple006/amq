@@ -264,6 +264,11 @@ public class NioClient implements Runnable {
         return serializer.toByte(message);
     }
 
+    public <T> byte[] buildAcked(String msgId) {
+        Message message = Message.ofAcked(msgId);
+        return serializer.toByte(message);
+    }
+
     public static class ChangeRequest {
         public static final int REGISTER = 1;
         public static final int CHANGEOPS = 2;
@@ -288,7 +293,7 @@ public class NioClient implements Runnable {
             return true;
         }
 
-        public synchronized void waitForResponse() {
+        public synchronized Message waitForResponse() {
             while (this.rsp == null) {
                 try {
                     this.wait();
@@ -297,6 +302,7 @@ public class NioClient implements Runnable {
             }
 
             System.out.println(new String(this.rsp));
+            return serializer.getObj(this.rsp);
         }
     }
 

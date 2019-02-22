@@ -5,9 +5,8 @@ import com.artlongs.amq.tools.FastList;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
-import java.nio.channels.NetworkChannel;
 import java.util.List;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Map;
 
 /**
  * Func : 消息处理中心
@@ -16,7 +15,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public interface Processor {
 
-    ConcurrentMap<String, ByteBuffer> onData(AsynchronousSocketChannel channel ,ByteBuffer buffer);
+    Map<String, ByteBuffer> onData(AsynchronousSocketChannel channel , ByteBuffer buffer);
 
     Buffer getBuffer(String msgId);
 
@@ -30,10 +29,8 @@ public interface Processor {
 
     void sendMessageToSubcribe(List<Subscribe> subscribeList, Message message);
 
-    void sendMessageOfFanout(Message message);
+    Runnable delaySendOnScheduled();
 
-    NetworkChannel getTargetChannel(String keyOfChannel);
-
-
+    Runnable retrySendOnScheduled();
 
 }

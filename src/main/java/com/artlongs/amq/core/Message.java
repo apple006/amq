@@ -72,18 +72,38 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         stat.setOn(Message.ON.SENED);
     }
 
-    public int getAckedSize(){
+    /**
+     * 累加重发次数
+     */
+    public void incrRetry() {
+        Stat stat = getStat();
+        if (null != stat) {
+            stat.setRetry(stat.getRetry() + 1);
+        }
+    }
+
+    /**
+     * 累加延迟次数
+     */
+    public void incrDelay() {
+        Stat stat = getStat();
+        if (null != stat) {
+            stat.setDelay(stat.getDelay() + 1);
+        }
+    }
+
+    public int ackedSize(){
         if(null == this.getStat()) return 0;
         if(null == this.getStat().getNodesConfirmed()) return 0;
         return this.getStat().getNodesConfirmed().size();
     }
 
     /**
-     * 确认收到信息
+     * 创建 ACK 消息
      *
      * @return
      */
-    public Message ofACK() {
+    public Message changeToAck() {
         this.acked = true;
         this.k.spread = null;
         this.k.sendNode = null;
@@ -93,6 +113,21 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         this.life = null;
         this.v = null;
         return this;
+    }
+
+    public static Message ofAcked(String msgId) {
+        Message m = new Message();
+        m.setK(new Key());
+        m.k.id = msgId;
+        m.acked = true;
+        m.k.spread = null;
+        m.k.sendNode = null;
+        m.k.recNode = null;
+        m.k.topic = null;
+        m.stat = null;
+        m.life = null;
+        m.v = null;
+        return m;
     }
 
     ////=============================================
@@ -276,8 +311,8 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         private Long ttl;   //Time To Live
         private Long ctime; //create time
         private Long mtime; //modify time
-        private long delay; //延迟发送
-        private int retry; //重试次数
+        private int delay; //延迟发送(消息未ACKED)
+        private int retry; //重试次数(发送失败之后再重发)
         private Set<String> nodesDelivered; // 已送达
         private Set<String> nodesConfirmed; // 已确认
 
@@ -317,11 +352,11 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             return this;
         }
 
-        public Long getDelay() {
+        public int getDelay() {
             return delay;
         }
 
-        public Stat setDelay(long delay) {
+        public Stat setDelay(int delay) {
             this.delay = delay;
             return this;
         }
@@ -370,14 +405,14 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
      * SPREAD
      */
     public enum SPREAD {
-        TOPIC, FANOUT, DIRECT;
+        TOPIC, DIRECT;
     }
 
 
     public static void main(String[] args) {
-        Message msg = new Message().ofDef(new Key(ID.ONLY.id(), "quene", SPREAD.FANOUT), "hello");
+        Message msg = new Message().ofDef(new Key(ID.ONLY.id(), "quene", SPREAD.TOPIC), "hello");
         System.err.println("msg=" + msg);
-        System.err.println("ack=" + msg.ofACK());
+        System.err.println("ack=" + msg.changeToAck());
     }
 
 

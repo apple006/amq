@@ -37,8 +37,16 @@ public class MqConfig {
 	public static int connect_timeout = 3;
 	public static int clinet_send_max = 30;
 	// 间隔x秒,重发消息如果消息没有确认收到
-	public static int msg_not_acked_resend_period = 30;
+	public static int msg_not_acked_resend_period = 10;
+	// 消息未确认的消息重发的最大次数
+	public static int msg_not_acked_resend_max_times = 3;
+	// 间隔x秒,发送失败的消息重发间隔
+	public static int msg_falt_message_resend_period = 60;
+	//发送失败的消息重发的最大次数
+	public static int msg_falt_message_resend_max_times = 10;
 
+	// cache map size
+	public static int mq_cache_map_sizes = 512;
 
 	// MAPDB 数据库文件
 	public static final String mapdb_file_path = "/volumes/work/mapdb/";
