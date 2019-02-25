@@ -88,7 +88,7 @@ public class NioReactor {
     public static void main(String[] args) {
         NioReactor reactor;
         try {
-            reactor = new NioReactor(MqConfig.server_ip, MqConfig.port);
+            reactor = new NioReactor(MqConfig.host, MqConfig.port);
             reactor.dispatchLoop();
         } catch (IOException e) {
             e.printStackTrace();

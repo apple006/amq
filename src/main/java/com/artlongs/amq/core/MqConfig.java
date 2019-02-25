@@ -10,19 +10,15 @@ import java.nio.charset.StandardCharsets;
  *
  */
 public class MqConfig {
+	//========================== IO ITME =====================================
 	/**
 	 * 创建一个全局的 ByteBuffer Pool
 	 */
 	public static final Pool<ByteBuffer> mq_buffer_pool= Pool.MEDIUM_DIRECT;
-	public enum IO{
-		nio,aio;
-	}
 	public static Charset utf_8 = StandardCharsets.UTF_8;
-
-	public static IO io = IO.aio;
+	public static String host = "127.0.0.1";
 	public static int port = 8888;
-	public static String server_ip = "127.0.0.1";
-
+	//========================== MQ ITME =====================================
 	//读取数据的行等侍时长(秒)
 	public static int read_wait_timeout = 3;
 	//最大连接数
@@ -48,6 +44,7 @@ public class MqConfig {
 	// cache map size
 	public static int mq_cache_map_sizes = 512;
 
+	//========================== DB ITME =====================================
 	// MAPDB 数据库文件
 	public static final String mapdb_file_path = "/volumes/work/mapdb/";
 

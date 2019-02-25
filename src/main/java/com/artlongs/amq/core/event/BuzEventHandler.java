@@ -19,7 +19,6 @@ public class BuzEventHandler implements WorkHandler<JobEvent> {
         Message message = event.getMessage();
         if (!message.isSubscribe()) {
             System.err.println(" 执行业务消息的匹配及发送 ......");
-            String msgId = message.getK().getId();
             String topic = message.getK().getTopic();
             switch (message.getK().getSpread()) {
                 case TOPIC:

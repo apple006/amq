@@ -1,6 +1,5 @@
 package com.artlongs.amq.client;
 
-import com.artlongs.amq.client.NioClient;
 import com.artlongs.amq.core.Message;
 import com.artlongs.amq.core.MqConfig;
 
@@ -18,7 +17,7 @@ public class TestSender1 {
     public static void main(String[] args) throws IOException {
         ExecutorService pool = Executors.newFixedThreadPool(MqConfig.connect_thread_pool_size);
 
-        NioClient client = new NioClient(MqConfig.server_ip, MqConfig.port);
+        NioClient client = new NioClient(MqConfig.host, MqConfig.port);
         Thread t = new Thread(client);
         t.setDaemon(true);
         pool.submit(t);

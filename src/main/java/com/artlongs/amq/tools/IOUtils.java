@@ -1,6 +1,7 @@
 package com.artlongs.amq.tools;
 
 import com.artlongs.amq.core.MqConfig;
+import com.artlongs.amq.serializer.ISerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +17,8 @@ import java.nio.charset.StandardCharsets;
  */
 public class IOUtils {
     private static Logger logger = LoggerFactory.getLogger(IOUtils.class);
+    private static ISerializer serializer = ISerializer.Serializer.INST.of();
+
     public static void print(ByteBuffer buf){
         if (null != buf && buf.remaining() >0) {
             buf.flip();
@@ -158,7 +161,6 @@ public class IOUtils {
 
         return getRemoteAddress(channel).toString();
     }
-
 
 
 

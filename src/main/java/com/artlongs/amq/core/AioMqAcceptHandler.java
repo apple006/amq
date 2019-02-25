@@ -60,7 +60,7 @@ public class AioMqAcceptHandler implements CompletionHandler<AsynchronousSocketC
 //            IOUtils.write(client, buffer);
 
             // 把收到的数据加入到消息处理中心
-            processor.onData(channel,buffer);
+//            processor.onMessage(channel,buffer);
 
         }
 

@@ -1,9 +1,8 @@
 package com.artlongs.amq.core;
 
-import com.alibaba.fastjson.JSON;
+import com.artlongs.amq.core.aio.AioPipe;
 
 import java.io.Serializable;
-import java.nio.channels.NetworkChannel;
 import java.util.Iterator;
 import java.util.List;
 
@@ -17,14 +16,14 @@ public class Subscribe implements Serializable {
 
     private String id;
     private String topic;
-    private NetworkChannel channel;
+    private AioPipe pipe;
     private Life life;
     private boolean done;
 
-    public Subscribe(String id, String topic, NetworkChannel channel, Life life ,boolean done) {
+    public Subscribe(String id, String topic, AioPipe pipe, Life life ,boolean done) {
         this.id = id;
         this.topic = topic;
-        this.channel = channel;
+        this.pipe = pipe;
         this.life = life;
         this.done = done;
     }
@@ -66,21 +65,12 @@ public class Subscribe implements Serializable {
         return this;
     }
 
-    public NetworkChannel getChannel() {
-        return channel;
+    public AioPipe getPipe() {
+        return pipe;
     }
 
-    public Subscribe setChannel(NetworkChannel channel) {
-        this.channel = channel;
-        return this;
-    }
-
-    public boolean isDone() {
-        return done;
-    }
-
-    public Subscribe setDone(boolean done) {
-        this.done = done;
+    public Subscribe setPipe(AioPipe pipe) {
+        this.pipe = pipe;
         return this;
     }
 
@@ -93,10 +83,24 @@ public class Subscribe implements Serializable {
         return this;
     }
 
-    @Override
-    public String toString() {
-        return JSON.toJSONString(this);
+    public boolean isDone() {
+        return done;
     }
 
+    public Subscribe setDone(boolean done) {
+        this.done = done;
+        return this;
+    }
 
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("Subscribe{");
+        sb.append("id='").append(id).append('\'');
+        sb.append(", topic='").append(topic).append('\'');
+        sb.append(", pipe=").append(pipe);
+        sb.append(", life=").append(life);
+        sb.append(", done=").append(done);
+        sb.append('}');
+        return sb.toString();
+    }
 }

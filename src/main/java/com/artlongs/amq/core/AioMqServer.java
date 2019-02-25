@@ -36,13 +36,13 @@ public class AioMqServer implements MqServer {
             //
             AsynchronousChannelGroup group = AsynchronousChannelGroup.withThreadPool(connectThreadPool);
             serverSocket = AsynchronousServerSocketChannel.open(group);
-            serverSocket.bind(new InetSocketAddress(config.server_ip, config.port), config.max_connection);
+            serverSocket.bind(new InetSocketAddress(config.host, config.port), config.max_connection);
             serverSocket.accept(null, new AioMqAcceptHandler(this));
 
         } catch (IOException e) {
             e.printStackTrace();
         }
-        logger.warn("AMQ had started,listening {}:{}", config.server_ip, config.port);
+        logger.warn("AMQ had started,listening {}:{}", config.host, config.port);
     }
 
     @Override

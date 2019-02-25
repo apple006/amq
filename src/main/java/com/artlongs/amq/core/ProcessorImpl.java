@@ -1,5 +1,6 @@
 package com.artlongs.amq.core;
 
+import com.artlongs.amq.core.aio.AioPipe;
 import com.artlongs.amq.core.event.BuzEventHandler;
 import com.artlongs.amq.core.event.JobEvent;
 import com.artlongs.amq.core.event.JobEvnetHandler;
@@ -11,14 +12,11 @@ import com.artlongs.amq.disruptor.dsl.ProducerType;
 import com.artlongs.amq.disruptor.util.DaemonThreadFactory;
 import com.artlongs.amq.serializer.ISerializer;
 import com.artlongs.amq.tools.FastList;
-import com.artlongs.amq.tools.IOUtils;
 import org.osgl.util.C;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousSocketChannel;
-import java.nio.channels.NetworkChannel;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,10 +33,6 @@ public enum ProcessorImpl implements Processor {
     INST;
     private static Logger logger = LoggerFactory.getLogger(ProcessorImpl.class);
 
-    /**
-     * 从客户端读取到的数据缓存 map(messageId,ByteBuffer)
-     */
-    public static ConcurrentSkipListMap<String, ByteBuffer> cache_buffer = new ConcurrentSkipListMap();
     /**
      * 从客户端读取到的数据缓存 map(messageId,Message)
      */
@@ -137,34 +131,29 @@ public enum ProcessorImpl implements Processor {
     }
 
     @Override
-    public Map<String, ByteBuffer> onData(AsynchronousSocketChannel channel, ByteBuffer buffer) {
-        Message message = parser(buffer);
+    public void onMessage(AioPipe pipe, Message message) {
         if (message.isAcked()) { // ack msg
-            flagOnAck(channel,message);
+            String clientNode = pipe.getLocalAddress().toString();
+            flagOnAck(clientNode,message);
         }else {
             if(message.isSubscribe()){ // subscribe msg
-                addSubscribeIF(channel,message);
+                addSubscribeIF(pipe,message);
             }else { // common buz msg
-                addCache(message.getK().getId(), buffer);
                 addCache(message.getK().getId(), message);
                 // pulish message job to RingBuffer
                 pulishJobEvent(message);
             }
         }
-        return cache_buffer;
     }
 
     @Override
-    public ByteBuffer getBuffer(String id) {
-        return cache_buffer.get(id);
+    public Message getMessage(String msgId) {
+        return cache_all_message.get(msgId);
     }
+
 
     public Message getMessageOfCache(String id) {
        return cache_all_message.get(id);
-    }
-
-    private void addCache(String key, ByteBuffer buffer) {
-        cache_buffer.putIfAbsent(key, buffer);
     }
 
     private void addCache(String key, Message message) {
@@ -172,7 +161,6 @@ public enum ProcessorImpl implements Processor {
     }
 
     public void removeCacheOfDone(String key){
-        cache_buffer.remove(key);
         cache_all_message.remove(key);
         cache_falt_message.remove(key);
     }
@@ -187,12 +175,11 @@ public enum ProcessorImpl implements Processor {
      * 标记消息已经收到
      * @param ack
      */
-    private void flagOnAck(AsynchronousSocketChannel channel, Message ack) {
+    private void flagOnAck(String clientNode, Message ack) {
         String ackId = ack.getK().getId();
         Message message = getMessageOfCache(ackId);
         if (null != message) {
-            String node = IOUtils.getRemoteAddressStr(channel);
-            message.upStatOfACK(node);
+            message.upStatOfACK(clientNode);
         }
     }
 
@@ -211,10 +198,10 @@ public enum ProcessorImpl implements Processor {
 
     }
 
-    private boolean addSubscribeIF(NetworkChannel channel,Message message) {
+    private boolean addSubscribeIF(AioPipe pipe,Message message) {
         if (message.isSubscribe()) {
             String clientKey = message.getK().getSendNode();
-            Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), channel, message.getLife(), false);
+            Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), pipe, message.getLife(), false);
             subscribe.putIfAbsent(clientKey, listen);
             return true;
         }
@@ -274,10 +261,10 @@ public enum ProcessorImpl implements Processor {
                 return;
             }
 
-            String remoteAddressStr = IOUtils.getRemoteAddressStr(listen.getChannel());
+            String remoteAddressStr = listen.getPipe().getRemoteAddress().toString();
             if(isACKED(message, remoteAddressStr)) return;
 
-            boolean writed = IOUtils.write((AsynchronousSocketChannel) listen.getChannel(), ProcessorImpl.INST.getBuffer(msgId));
+            boolean writed = listen.getPipe().write(message);
             if (writed) {
                 onSendSuccToOption(subscribeList, listen, message);
             }else {
@@ -294,6 +281,7 @@ public enum ProcessorImpl implements Processor {
             public void run() {
                 for (Message message : cache_all_message.values()) {
                     if(MqConfig.msg_not_acked_resend_max_times > message.getStat().getDelay()){
+                        message.incrDelay();
                         pulishJobEvent(message);
                     }
                 }
@@ -309,7 +297,8 @@ public enum ProcessorImpl implements Processor {
             @Override
             public void run() {
                 for (Message message : cache_falt_message.values()) {
-                    if(MqConfig.msg_falt_message_resend_max_times > message.getStat().getDelay()){
+                    if(MqConfig.msg_falt_message_resend_max_times > message.getStat().getRetry()){
+                        message.incrRetry();
                         pulishJobEvent(message);
                     }
                 }
@@ -318,6 +307,12 @@ public enum ProcessorImpl implements Processor {
         return retry;
     }
 
+    /**
+     * 当前的消息,客户端已确认
+     * @param message
+     * @param node
+     * @return
+     */
     private boolean isACKED(Message message, String node) {
         Set<String> nodesConfirmed = message.getStat().getNodesConfirmed();
         if (C.notEmpty(nodesConfirmed)) {

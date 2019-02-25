@@ -312,7 +312,7 @@ public class NioClient implements Runnable {
 //            client.send("GET / HTTP/1.0\r\n\r\n".getBytes(), handler);
             ExecutorService pool = Executors.newFixedThreadPool(MqConfig.connect_thread_pool_size);
 
-            NioClient client = new NioClient(MqConfig.server_ip, MqConfig.port);
+            NioClient client = new NioClient(MqConfig.host, MqConfig.port);
             Thread t = new Thread(client);
             t.setDaemon(true);
             pool.submit(t);

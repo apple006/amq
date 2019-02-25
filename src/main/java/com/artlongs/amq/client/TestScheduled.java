@@ -22,9 +22,9 @@ public class TestScheduled {
             }
         };
 
-        //1秒后执行，每1秒执行一次
+ /*       //1秒后执行，每1秒执行一次
         final ScheduledFuture<?> beeperHandler = scheduler.scheduleAtFixedRate(
-                beeper, 1, 1, SECONDS);
+                beeper, 1, 1, SECONDS);*/
         //2秒后执行，执行完成后间隔5秒在执行下一次
         final ScheduledFuture<?> beeperHandler2 = scheduler.scheduleWithFixedDelay(
                 beeper, 2, 5, SECONDS);

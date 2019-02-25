@@ -1,12 +1,10 @@
 package com.artlongs.amq.core;
 
+import com.artlongs.amq.core.aio.AioPipe;
 import com.artlongs.amq.tools.FastList;
 
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousSocketChannel;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Func : 消息处理中心
@@ -15,9 +13,9 @@ import java.util.Map;
  */
 public interface Processor {
 
-    Map<String, ByteBuffer> onData(AsynchronousSocketChannel channel , ByteBuffer buffer);
+    void onMessage(AioPipe<Message> pipe, Message message);
 
-    Buffer getBuffer(String msgId);
+    Message getMessage(String msgId);
 
     Message parser(ByteBuffer buffer);
 

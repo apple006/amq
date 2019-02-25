@@ -99,7 +99,7 @@ public class Reactor implements Runnable {
 
 
     public static void main(String[] args) throws IOException {
-        Reactor reactor = new Reactor(MqConfig.server_ip, MqConfig.port);
+        Reactor reactor = new Reactor(MqConfig.host, MqConfig.port);
         reactor.run();
     }
 

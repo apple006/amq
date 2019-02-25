@@ -58,7 +58,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             stat.nodesDelivered = C.newSet();
         }
         stat.nodesDelivered.add(node);
-        stat.setMtime(System.currentTimeMillis());
+        stat.setMtime(DateUtils.now());
         stat.setOn(Message.ON.SENED);
     }
 
@@ -68,7 +68,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             stat.nodesConfirmed = C.newSet();
         }
         stat.nodesConfirmed.add(node);
-        stat.setMtime(System.currentTimeMillis());
+        stat.setMtime(DateUtils.now());
         stat.setOn(Message.ON.SENED);
     }
 
