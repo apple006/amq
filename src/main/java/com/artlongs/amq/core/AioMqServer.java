@@ -1,105 +1,28 @@
 package com.artlongs.amq.core;
 
-import com.artlongs.amq.tools.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.artlongs.amq.core.aio.AioServer;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.channels.AsynchronousChannelGroup;
-import java.nio.channels.AsynchronousServerSocketChannel;
-import java.nio.channels.NetworkChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * Func :
  *
- * @author: leeton on 2019/1/18.
+ * @author: leeton on 2019/2/22.
  */
-public class AioMqServer implements MqServer {
-    private static Logger logger = LoggerFactory.getLogger(AioMqServer.class);
+public class AioMqServer {
 
-    protected MqConfig config;
-    private ExecutorService connectThreadPool;
-    private AsynchronousServerSocketChannel serverSocket = null;
+    public static void main(String[] args) throws IOException {
+        ExecutorService pool = Executors.newFixedThreadPool(MqConfig.connect_thread_pool_size);
 
-    public AioMqServer(MqConfig config) {
-        this.config = config;
-    }
-
-    @Override
-    public void start() {
-        try {
-            connectThreadPool = Executors.newFixedThreadPool(config.connect_thread_pool_size);
-            daemon(this);
-            //
-            AsynchronousChannelGroup group = AsynchronousChannelGroup.withThreadPool(connectThreadPool);
-            serverSocket = AsynchronousServerSocketChannel.open(group);
-            serverSocket.bind(new InetSocketAddress(config.host, config.port), config.max_connection);
-            serverSocket.accept(null, new AioMqAcceptHandler(this));
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        logger.warn("AMQ had started,listening {}:{}", config.host, config.port);
-    }
-
-    @Override
-    public void run() {
-
-    }
-
-    @Override
-    public void shutdown() {
-
-    }
-
-    @Override
-    public void daemon(Runnable runnable) {
-        Thread t = new Thread(runnable);
+        AioServer<Message> aioServer = new AioServer<>(MqConfig.host, MqConfig.port, new MqProtocol(), new MqServerProcessor());
+        Thread t = new Thread(aioServer);
         t.setDaemon(true);
-        connectThreadPool.submit(t);
-    }
+        pool.submit(t);
+        aioServer.start();
 
-    @Override
-    public void accept() {
 
     }
-
-    @Override
-    public void assignJob() {
-
-    }
-
-    @Override
-    public NetworkChannel getServerChannel() {
-        return serverSocket;
-    }
-
-    private InetSocketAddress getClientAddr(NetworkChannel channel) {
-        return IOUtils.getRemoteAddress(channel);
-    }
-
-    @Override
-    public MqConfig getConfig() {
-        return config;
-    }
-
-    @Override
-    public boolean isOpen() {
-        return serverSocket.isOpen();
-    }
-
-    @Override
-    public void close() throws IOException {
-        serverSocket.close();
-    }
-
-    public static void main(String[] args) {
-        new AioMqServer(new MqConfig()).start();
-
-    }
-
 
 }

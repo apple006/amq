@@ -22,8 +22,9 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     private Key k;
     private V v; // centent body
     private Stat stat;
-    private Boolean subscribe;
+    private String subscribeId;  //订阅者 ID
     private Subscribe.Life life;
+    private Subscribe.Listen listen;
     private boolean acked;
 
     ////=============================================
@@ -32,7 +33,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         Message m = new Message();
         m.k = k;
         m.v = v;
-        m.subscribe = false;
         Stat stat = new Stat()
                 .setCtime(now)
                 .setMtime(now)
@@ -48,8 +48,8 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         return m;
     }
 
-    public static <V> Message ofSubscribe(Key k, V v, boolean subscribe) {
-        return ofDef(k, v).setSubscribe(subscribe);
+    public static <V> Message ofSubscribe(Key k, V v, Subscribe.Life life, Subscribe.Listen listen) {
+        return ofDef(k, v).setSubscribeId(k.id).setLife(life).setListen(listen);
     }
 
     public void upStatOfSended(String node) {
@@ -103,29 +103,17 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
      *
      * @return
      */
-    public Message changeToAck() {
-        this.acked = true;
-        this.k.spread = null;
-        this.k.sendNode = null;
-        this.k.recNode = null;
-        this.k.topic = null;
-        this.stat = null;
-        this.life = null;
-        this.v = null;
-        return this;
-    }
-
-    public static Message ofAcked(String msgId) {
+    public static Message ofAcked(String msgId, Subscribe.Life life) {
         Message m = new Message();
         m.setK(new Key());
         m.k.id = msgId;
+        m.life = life;
         m.acked = true;
         m.k.spread = null;
         m.k.sendNode = null;
         m.k.recNode = null;
         m.k.topic = null;
         m.stat = null;
-        m.life = null;
         m.v = null;
         return m;
     }
@@ -173,12 +161,16 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     }
 
     public Boolean isSubscribe() {
-        return subscribe;
+        return (null != subscribeId) ;
     }
 
-    public Message<K, V> setSubscribe(boolean subscribe) {
-        this.subscribe = subscribe;
+    public Message<K, V> setSubscribeId(String subscribeId) {
+        this.subscribeId = subscribeId;
         return this;
+    }
+
+    public String getSubscribeId() {
+        return subscribeId;
     }
 
     public Subscribe.Life getLife() {
@@ -196,6 +188,15 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
     public Message<K, V> setAcked(boolean acked) {
         this.acked = acked;
+        return this;
+    }
+
+    public Subscribe.Listen getListen() {
+        return listen;
+    }
+
+    public Message<K, V> setListen(Subscribe.Listen listen) {
+        this.listen = listen;
         return this;
     }
 
@@ -405,14 +406,14 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
      * SPREAD
      */
     public enum SPREAD {
-        TOPIC, DIRECT;
+        TOPIC, // 普通的消息类型
+        DIRECT; // 直连类型,带 callback 效果
     }
 
 
     public static void main(String[] args) {
         Message msg = new Message().ofDef(new Key(ID.ONLY.id(), "quene", SPREAD.TOPIC), "hello");
         System.err.println("msg=" + msg);
-        System.err.println("ack=" + msg.changeToAck());
     }
 
 

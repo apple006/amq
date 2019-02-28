@@ -12,11 +12,12 @@ import com.artlongs.amq.disruptor.dsl.ProducerType;
 import com.artlongs.amq.disruptor.util.DaemonThreadFactory;
 import com.artlongs.amq.serializer.ISerializer;
 import com.artlongs.amq.tools.FastList;
+import com.artlongs.amq.tools.RingBufferQueue;
 import org.osgl.util.C;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,7 +47,7 @@ public enum ProcessorImpl implements Processor {
     /**
      * 客户端订阅的主题 map(messageId,Subscribe)
      */
-    public static ConcurrentSkipListMap<String, Subscribe> subscribe =   new ConcurrentSkipListMap();
+    public static RingBufferQueue<Subscribe> subscribe_cache =   new RingBufferQueue<>(MqConfig.mq_cache_map_sizes);
 
     public static ISerializer json = ISerializer.Serializer.INST.of();
 
@@ -132,14 +133,20 @@ public enum ProcessorImpl implements Processor {
 
     @Override
     public void onMessage(AioPipe pipe, Message message) {
+        String msgId = message.getK().getId();
         if (message.isAcked()) { // ack msg
-            String clientNode = pipe.getLocalAddress().toString();
-            flagOnAck(clientNode,message);
+            if (Subscribe.Life.SPARK == message.getLife()) {
+                removeSubscribeCacheOnAck(msgId);
+                removeDbDataOfDone(msgId);
+            }else {
+                String clientNode = pipe.getLocalAddress().toString();
+                flagOnAck(clientNode,message);
+            }
         }else {
             if(message.isSubscribe()){ // subscribe msg
                 addSubscribeIF(pipe,message);
             }else { // common buz msg
-                addCache(message.getK().getId(), message);
+                addCache(msgId, message);
                 // pulish message job to RingBuffer
                 pulishJobEvent(message);
             }
@@ -171,6 +178,18 @@ public enum ProcessorImpl implements Processor {
         Store.INST.removeOfUptime(key);
     }
 
+    private void removeSubscribeCacheOnAck(String ackId) {
+        Iterator<Subscribe> iter = subscribe_cache.iterator();
+        while (iter.hasNext()) {
+            Subscribe subscribe = iter.next();
+            if(ackId.equals(subscribe.getId())){
+                subscribe_cache.remove(subscribe.getIdx());
+                break;
+            }
+        }
+    }
+
+
     /**
      * 标记消息已经收到
      * @param ack
@@ -182,6 +201,7 @@ public enum ProcessorImpl implements Processor {
             message.upStatOfACK(clientNode);
         }
     }
+
 
     private void pulishJobEvent(Message message) {
         try {
@@ -198,19 +218,21 @@ public enum ProcessorImpl implements Processor {
 
     }
 
+    /**
+     * 如果是订阅消息,加入到订阅队列
+     * @param pipe
+     * @param message
+     * @return
+     */
     private boolean addSubscribeIF(AioPipe pipe,Message message) {
         if (message.isSubscribe()) {
-            String clientKey = message.getK().getSendNode();
-            Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), pipe, message.getLife(), false);
-            subscribe.putIfAbsent(clientKey, listen);
+            String clientKey = message.getK().getId();
+            Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), pipe, message.getLife(),message.getListen());
+            RingBufferQueue.Result result = subscribe_cache.putIfAbsent(listen);
+            listen.setIdx(result.index);
             return true;
         }
         return false;
-    }
-
-    @Override
-    public Message parser(ByteBuffer buffer) {
-        return json.getObj(buffer);
     }
 
     @Override
@@ -227,8 +249,10 @@ public enum ProcessorImpl implements Processor {
      */
     public FastList<Subscribe> subscribeOfTopic(String topic) {
         FastList<Subscribe> list = new FastList<>(Subscribe.class);
-        for (Subscribe listen : subscribe.values()) {
-            if(listen.getTopic().startsWith(topic)){
+        Iterator<Subscribe> subscribes = subscribe_cache.iterator();
+        while (subscribes.hasNext()) {
+            Subscribe listen = subscribes.next();
+            if (null != listen && listen.getTopic().startsWith(topic)) {
                 list.add(listen);
             }
         }
@@ -242,8 +266,10 @@ public enum ProcessorImpl implements Processor {
      */
     public FastList<Subscribe> subscribeOfDirect(String directTopic) {
         FastList<Subscribe> list = new FastList<>(Subscribe.class);
-        for (Subscribe listen : subscribe.values()) {
-            if(listen.getTopic().equalsIgnoreCase(directTopic)){
+        Iterator<Subscribe> subscribes = subscribe_cache.iterator();
+        while (subscribes.hasNext()) {
+            Subscribe listen = subscribes.next();
+            if (null != listen && listen.getTopic().startsWith(directTopic)) {
                 list.add(listen);
             }
         }
@@ -251,9 +277,13 @@ public enum ProcessorImpl implements Processor {
     }
 
     public void sendMessageToSubcribe(List<Subscribe> subscribeList,Message message){
-        for (Subscribe listen : subscribeList) {
+        for (Subscribe subscribe : subscribeList) {
+            if (pipeInvalidThenUnsubscribe(subscribe)) {
+                subscribe.remove(subscribeList, subscribe);
+                continue;
+            }
             String msgId = message.getK().getId();
-            // remove 掉缓存当客户端全部 ACK
+            // 当客户端全部 ACK,则 remove 掉缓存
             int sends = message.ackedSize();
             if (sends >= subscribeList.size()) {
                 removeCacheOfDone(msgId);
@@ -261,16 +291,40 @@ public enum ProcessorImpl implements Processor {
                 return;
             }
 
-            String remoteAddressStr = listen.getPipe().getRemoteAddress().toString();
+            String remoteAddressStr = subscribe.getPipe().getRemoteAddress().toString();
             if(isACKED(message, remoteAddressStr)) return;
 
-            boolean writed = listen.getPipe().write(message);
+            changeMessageOnReply(subscribe, message);
+            boolean writed = subscribe.getPipe().write(message);
             if (writed) {
-                onSendSuccToOption(subscribeList, listen, message);
+                onSendSuccToOption(subscribeList, subscribe, message);
             }else {
                 onSendFailToBackup(message);
             }
         }
+    }
+
+    private void changeMessageOnReply(Subscribe subscribe,Message message) {
+        message.setSubscribeId(subscribe.getId());
+        message.setLife(subscribe.getLife());
+        message.setListen(subscribe.getListen());
+    }
+
+    /**
+     * 通道失效,移除对应在的订阅
+     * @param subscribe
+     * @return
+     */
+    private boolean pipeInvalidThenUnsubscribe(Subscribe subscribe) {
+        try {
+            if (subscribe.getPipe().isInvalid()) {
+                subscribe_cache.remove(subscribe.getIdx());
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     @Override

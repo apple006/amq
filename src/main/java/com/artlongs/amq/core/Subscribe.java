@@ -1,10 +1,11 @@
 package com.artlongs.amq.core;
 
 import com.artlongs.amq.core.aio.AioPipe;
+import com.artlongs.amq.tools.RingBufferQueue;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
 
 /**
  * Func :订阅
@@ -18,22 +19,31 @@ public class Subscribe implements Serializable {
     private String topic;
     private AioPipe pipe;
     private Life life;
-    private boolean done;
+    private Listen listen;
+    private int idx; // 在队列里的 index
 
-    public Subscribe(String id, String topic, AioPipe pipe, Life life ,boolean done) {
+    public Subscribe(String id, String topic, AioPipe pipe, Life life,Listen listen) {
         this.id = id;
         this.topic = topic;
         this.pipe = pipe;
         this.life = life;
-        this.done = done;
+        this.listen = listen;
     }
 
     /**
      * 订阅的生命周期
      */
-    public enum Life{ LONG, SPARK;}
+    public enum Life{ ALL_COMFIRM, SPARK;}
 
-    public void remove(List<Subscribe> subscribeList,Subscribe target) {
+    /**
+     * 监听消息的模式
+     */
+    public enum Listen{
+        PINGPONG, // 使用 Future 读取一次F
+        CALLBACK; // 回调的模式
+    }
+
+    public void remove(Collection<Subscribe> subscribeList, Subscribe target) {
         Iterator<Subscribe> iterable = subscribeList.iterator();
         while (iterable.hasNext()) {
             Subscribe item = iterable.next();
@@ -42,6 +52,10 @@ public class Subscribe implements Serializable {
             }
         }
 
+    }
+
+    public void remove(RingBufferQueue queue, Subscribe target) {
+        queue.remove(target.idx);
     }
 
     //================================ 我的貂婵在那里 ================================================
@@ -83,24 +97,24 @@ public class Subscribe implements Serializable {
         return this;
     }
 
-    public boolean isDone() {
-        return done;
+    public int getIdx() {
+        return idx;
     }
 
-    public Subscribe setDone(boolean done) {
-        this.done = done;
+    public Subscribe setIdx(int idx) {
+        this.idx = idx;
         return this;
     }
 
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder("Subscribe{");
-        sb.append("id='").append(id).append('\'');
-        sb.append(", topic='").append(topic).append('\'');
-        sb.append(", pipe=").append(pipe);
-        sb.append(", life=").append(life);
-        sb.append(", done=").append(done);
-        sb.append('}');
-        return sb.toString();
+
+    public Listen getListen() {
+        return listen;
     }
+
+    public Subscribe setListen(Listen listen) {
+        this.listen = listen;
+        return this;
+    }
+
+
 }

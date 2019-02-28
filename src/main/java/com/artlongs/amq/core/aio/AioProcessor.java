@@ -7,5 +7,5 @@ package com.artlongs.amq.core.aio;
  */
 public interface AioProcessor<T> {
     void process(AioPipe<T> pipe, T msg);
-    void stateEvent(AioPipe<T> session, State state, Throwable throwable);
+    void stateEvent(AioPipe<T> pipe, State state, Throwable throwable);
 }

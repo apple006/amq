@@ -2,10 +2,10 @@ package disruptor;
 
 import com.artlongs.amq.disruptor.RingBuffer;
 import com.artlongs.amq.disruptor.dsl.Disruptor;
-import com.artlongs.amq.server.http.HttpRequest;
-import com.artlongs.amq.server.http.HttpResponse;
-import com.artlongs.amq.server.http.HttpServerConfig;
-import com.artlongs.amq.server.http.aio.AioHttpServer;
+import com.artlongs.amq.http.HttpRequest;
+import com.artlongs.amq.http.HttpResponse;
+import com.artlongs.amq.http.HttpServerConfig;
+import com.artlongs.amq.http.aio.AioHttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

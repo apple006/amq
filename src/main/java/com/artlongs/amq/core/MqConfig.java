@@ -42,7 +42,7 @@ public class MqConfig {
 	public static int msg_falt_message_resend_max_times = 10;
 
 	// cache map size
-	public static int mq_cache_map_sizes = 512;
+	public static int mq_cache_map_sizes = 1024;
 
 	//========================== DB ITME =====================================
 	// MAPDB 数据库文件

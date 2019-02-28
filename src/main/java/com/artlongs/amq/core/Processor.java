@@ -3,7 +3,6 @@ package com.artlongs.amq.core;
 import com.artlongs.amq.core.aio.AioPipe;
 import com.artlongs.amq.tools.FastList;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -16,8 +15,6 @@ public interface Processor {
     void onMessage(AioPipe<Message> pipe, Message message);
 
     Message getMessage(String msgId);
-
-    Message parser(ByteBuffer buffer);
 
     void publishJobToWorker(Message message);
 

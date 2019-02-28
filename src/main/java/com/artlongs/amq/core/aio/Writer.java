@@ -10,12 +10,12 @@ import java.nio.channels.CompletionHandler;
 public class Writer<T> implements CompletionHandler<Integer, AioPipe<T>> {
 
     @Override
-    public void completed(Integer result, AioPipe<T> attachment) {
-
+    public void completed(Integer result, AioPipe<T> pipe) {
+        DirectBufferUtil.freeFirstBuffer(pipe.writeBuffer);
     }
 
     @Override
-    public void failed(Throwable exc, AioPipe<T> attachment) {
-
+    public void failed(Throwable exc, AioPipe<T> pipe) {
+        DirectBufferUtil.freeFirstBuffer(pipe.writeBuffer);
     }
 }

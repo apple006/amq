@@ -1,13 +1,15 @@
 package com.artlongs.amq.core.aio;
 
+import com.artlongs.amq.core.Message;
+import com.artlongs.amq.tools.RingBufferQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InvalidObjectException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -21,17 +23,18 @@ public class AioPipe<T> {
     Semaphore readSemaphore = new Semaphore(1);
 
     /**
+     * Session状态:正常
+     */
+    protected static final byte ENABLED = 1;
+    /**
      * Session状态:已关闭
      */
-    protected static final byte CLOSED = 1;
+    protected static final byte CLOSED = 0;
     /**
      * Session状态:关闭中
      */
-    protected static final byte CLOSING = 2;
-    /**
-     * Session状态:正常
-     */
-    protected static final byte ENABLED = 3;
+    protected static final byte CLOSING = -1;
+
     private static final int MAX_WRITE_SIZE = 256 * 1024;
 
     /**
@@ -49,10 +52,8 @@ public class AioPipe<T> {
     protected ByteBuffer writeBuffer;
 
     protected byte status = ENABLED;
-    /**
-     * 附件对象
-     */
-    private Object attachment;
+
+    private Future<Message> backMessage;
     /**
      * 是否流控,客户端写流控，服务端读流控
      */
@@ -60,20 +61,25 @@ public class AioPipe<T> {
     /**
      * 响应消息缓存队列。
      */
-    private FastBlockingQueue writeCacheQueue;
+    private RingBufferQueue<ByteBuffer> writeCacheQueue;
     private Reader<T> reader;
     private Writer<T> writer;
     private AioServerConfig<T> ioServerConfig;
+
+    /**
+     * 附件对象(通常传输文件才用得到)
+     */
+    private Object attachment;
 
     AioPipe(AsynchronousSocketChannel channel, AioServerConfig config, Reader<T> reader, Writer<T> writer) {
         this.channel = channel;
         this.reader = reader;
         this.writer = writer;
-        this.writeCacheQueue = config.getQueueSize() > 0 ? new FastBlockingQueue(config.getQueueSize()) : null;
+        this.writeCacheQueue = config.getQueueSize() > 0 ? new RingBufferQueue(config.getQueueSize()) : null;
         this.ioServerConfig = config;
         //触发状态机
         config.getProcessor().stateEvent(this, State.NEW_PIPE, null);
-        this.readBuffer = DirectBufferUtil.getTemporaryDirectBuffer(config.getDirctBufferSize());
+        this.readBuffer = DirectBufferUtil.allocateDirectBuffer(config.getDirctBufferSize());
     }
 
     /**
@@ -100,6 +106,10 @@ public class AioPipe<T> {
         channel.write(buffer, this, writer);
     }
 
+    private void clear(ByteBuffer buffer) {
+        buffer.clear();
+    }
+
     /**
      * 输出消息。
      * <p>必须实现{@link Protocol#encode(Object)}</p>方法
@@ -107,7 +117,7 @@ public class AioPipe<T> {
      * @param t 待输出消息必须为当前服务指定的泛型
      * @throws IOException
      */
-    public final boolean write(T t){
+    public final boolean write(T t) {
         try {
             write(ioServerConfig.getProtocol().encode(t));
             return true;
@@ -134,39 +144,22 @@ public class AioPipe<T> {
      */
     public final void write(final ByteBuffer buffer) throws IOException {
         if (isInvalid()) {
-            throw new IOException("pipe is " + (status == CLOSED ? "closed" : "invalid"));
+            logger.error(" pipe({}) is " + (status == CLOSED ? "closed" : "invalid"), getRemoteAddress());
+            return;
         }
         if (!buffer.hasRemaining()) {
-            throw new InvalidObjectException("buffer has no remaining");
-        }
-        if (ioServerConfig.getQueueSize() <= 0) {
-            try {
-                writeSemaphore.acquire();
-                writeBuffer = buffer;
-                continueWrite();
-            } catch (InterruptedException e) {
-                logger.error("acquire fail", e);
-                Thread.currentThread().interrupt();
-                throw new IOException(e.getMessage());
-            }
-            return;
-        } else if ((writeSemaphore.tryAcquire())) {
-            writeBuffer = buffer;
-            continueWrite();
+            logger.error("buffer has no remaining");
             return;
         }
-        try {
-            writeSemaphore.release();
-            //正常读取
-            int size = writeCacheQueue.put(buffer);
-            if (size >= ioServerConfig.getFlowLimitLine() && ioServerConfig.isServer()) {
-                flowControl = true;
-                ioServerConfig.getProcessor().stateEvent(this, State.FLOW_LIMIT, null);
-            }
-        } catch (InterruptedException e) {
-            logger.error("put buffer into cache fail", e);
-            Thread.currentThread().interrupt();
+
+        // buffer 写入到队列缓存
+        writeSemaphore.release();
+        int size = writeCacheQueue.put(buffer);
+        if (size >= ioServerConfig.getFlowLimitLine() && ioServerConfig.isServer()) {
+            flowControl = true;
+            ioServerConfig.getProcessor().stateEvent(this, State.FLOW_LIMIT, null);
         }
+
         if (writeSemaphore.tryAcquire()) {
             writeToChannel();
         }
@@ -183,38 +176,10 @@ public class AioPipe<T> {
             return;
         }
 
-        if (writeCacheQueue == null || writeCacheQueue.size() == 0) {
-            if (writeBuffer != null && writeBuffer.isDirect()) {
-                DirectBufferUtil.offerFirstTemporaryDirectBuffer(writeBuffer);
-            }
-            writeBuffer = null;
-            writeSemaphore.release();
-            //此时可能是Closing或Closed状态
-            if (isInvalid()) {
-                close();
-            }
-            //也许此时有新的消息通过write方法添加到writeCacheQueue中
-            else if (writeCacheQueue != null && writeCacheQueue.size() > 0 && writeSemaphore.tryAcquire()) {
-                writeToChannel();
-            }
-            return;
-        }
-        int totalSize = writeCacheQueue.expectRemaining(MAX_WRITE_SIZE);
-        ByteBuffer headBuffer = writeCacheQueue.poll();
-        if (headBuffer.remaining() == totalSize) {
-            writeBuffer = headBuffer;
-        } else {
-            if (writeBuffer == null || totalSize > writeBuffer.capacity()) {
-                if (writeBuffer != null && writeBuffer.isDirect()) {
-                    DirectBufferUtil.offerFirstTemporaryDirectBuffer(writeBuffer);
-                }
-                writeBuffer = DirectBufferUtil.getTemporaryDirectBuffer(totalSize);
-            } else {
-                writeBuffer.clear().limit(totalSize);
-            }
-            writeBuffer.put(headBuffer);
-            writeCacheQueue.pollInto(writeBuffer);
-            writeBuffer.flip();
+        // 从队列读取 buffer
+        if (writeCacheQueue.notEmpty()) {
+            writeBuffer = writeCacheQueue.pop();
+            writeBuffer.rewind();
         }
 
         //如果存在流控并符合释放条件，则触发读操作
@@ -307,7 +272,7 @@ public class AioPipe<T> {
     public synchronized void close(boolean immediate) {
         //status == SESSION_STATUS_CLOSED说明close方法被重复调用
         if (status == CLOSED) {
-            logger.warn("ignore, pipe:{} is closed:", getSessionID());
+            logger.warn("ignore, pipe:{} is closed:", getPipeId());
             writeSemaphore.release();
             return;
         }
@@ -333,9 +298,9 @@ public class AioPipe<T> {
             } finally {
                 writeSemaphore.release();
             }
-            DirectBufferUtil.offerFirstTemporaryDirectBuffer(readBuffer);
+            DirectBufferUtil.freeFirstBuffer(readBuffer);
             if (writeBuffer != null && writeBuffer.isDirect()) {
-                DirectBufferUtil.offerFirstTemporaryDirectBuffer(writeBuffer);
+                DirectBufferUtil.freeFirstBuffer(writeBuffer);
             }
         } else if ((writeBuffer == null || !writeBuffer.hasRemaining()) && (writeCacheQueue == null || writeCacheQueue.size() == 0) && writeSemaphore.tryAcquire()) {
             close(true);
@@ -345,10 +310,10 @@ public class AioPipe<T> {
     }
 
     /**
-     * 获取当前Session的唯一标识
+     * 获取当前 pipe 的唯一标识
      */
-    public final String getSessionID() {
-        return "aioSession-" + hashCode();
+    public final Integer getPipeId() {
+        return hashCode();
     }
 
     /**
@@ -358,29 +323,11 @@ public class AioPipe<T> {
         return status != ENABLED;
     }
 
-
-    /**
-     * 获取附件对象
-     *
-     * @return
-     */
-    public final <T> T getAttachment() {
-        return (T) attachment;
-    }
-
-    /**
-     * 存放附件，支持任意类型
-     */
-    public final <T> void setAttachment(T attachment) {
-        this.attachment = attachment;
-    }
-
     /**
      * @see AsynchronousSocketChannel#getLocalAddress()
      */
     public final InetSocketAddress getLocalAddress() {
         try {
-            assertChannel();
             return (InetSocketAddress) channel.getLocalAddress();
         } catch (IOException e) {
             e.printStackTrace();
@@ -391,9 +338,8 @@ public class AioPipe<T> {
     /**
      * @see AsynchronousSocketChannel#getRemoteAddress()
      */
-    public final InetSocketAddress getRemoteAddress(){
+    public final InetSocketAddress getRemoteAddress() {
         try {
-            assertChannel();
             return (InetSocketAddress) channel.getRemoteAddress();
         } catch (IOException e) {
             e.printStackTrace();
@@ -413,5 +359,23 @@ public class AioPipe<T> {
 
     public AsynchronousSocketChannel getChannel() {
         return channel;
+    }
+
+    public Future<Message> getBackMessage() {
+        return backMessage;
+    }
+
+    public AioPipe<T> setBackMessage(Future<Message> backMessage) {
+        this.backMessage = backMessage;
+        return this;
+    }
+
+    public Object getAttachment() {
+        return attachment;
+    }
+
+    public AioPipe<T> setAttachment(Object attachment) {
+        this.attachment = attachment;
+        return this;
     }
 }

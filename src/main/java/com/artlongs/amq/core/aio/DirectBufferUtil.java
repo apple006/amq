@@ -24,6 +24,40 @@ public class DirectBufferUtil {
     private DirectBufferUtil() {
     }
 
+
+    public static ByteBuffer allocateDirectBuffer(int size) {
+        if (isBufferTooLarge(size)) {
+            return ByteBuffer.allocateDirect(size);
+        } else {
+            DirectBufferUtil.BufferCache currentThreadCache = (DirectBufferUtil.BufferCache) bufferCache.get();
+            ByteBuffer buffer = currentThreadCache.get(size);
+            if (buffer != null) {
+                return buffer;
+            } else {
+                if (!currentThreadCache.isEmpty()) {
+                    buffer = currentThreadCache.removeFirst();
+                    free(buffer);
+                }
+
+                return ByteBuffer.allocateDirect(size);
+            }
+        }
+    }
+
+    public static void freeFirstBuffer(ByteBuffer buffer) {
+        if (isBufferTooLarge(buffer)) {
+            free(buffer);
+        } else {
+            assert buffer != null;
+
+            DirectBufferUtil.BufferCache currentThreadCache = (DirectBufferUtil.BufferCache) bufferCache.get();
+            if (!currentThreadCache.offerFirst(buffer)) {
+                free(buffer);
+            }
+
+        }
+    }
+
     private static long getMaxCachedBufferSize() {
         String var0 = (String) AccessController.doPrivileged(new PrivilegedAction<String>() {
             public String run() {
@@ -52,49 +86,11 @@ public class DirectBufferUtil {
         return isBufferTooLarge(var0.capacity());
     }
 
-    public static ByteBuffer getTemporaryDirectBuffer(int var0) {
-        if (isBufferTooLarge(var0)) {
-            return ByteBuffer.allocateDirect(var0);
-        } else {
-            DirectBufferUtil.BufferCache var1 = (DirectBufferUtil.BufferCache) bufferCache.get();
-            ByteBuffer var2 = var1.get(var0);
-            if (var2 != null) {
-                return var2;
-            } else {
-                if (!var1.isEmpty()) {
-                    var2 = var1.removeFirst();
-                    free(var2);
-                }
-
-                return ByteBuffer.allocateDirect(var0);
-            }
-        }
-    }
-
-    static void offerFirstTemporaryDirectBuffer(ByteBuffer var0) {
-        if (isBufferTooLarge(var0)) {
-            free(var0);
-        } else {
-            assert var0 != null;
-
-            DirectBufferUtil.BufferCache var1 = (DirectBufferUtil.BufferCache) bufferCache.get();
-            if (!var1.offerFirst(var0)) {
-                free(var0);
-            }
-
-        }
-    }
 
     private static void free(ByteBuffer var0) {
         ((DirectBuffer) var0).cleaner().clean();
     }
 
-//    public static void main(String[] args) {
-//        int i = 0;
-//        while (i++ < Integer.MAX_VALUE) {
-//            DirectBufferUtil.getTemporaryDirectBuffer(1024);
-//        }
-//    }
 
     private static class BufferCache {
         private ByteBuffer[] buffers;
@@ -105,19 +101,19 @@ public class DirectBufferUtil {
             this.buffers = new ByteBuffer[DirectBufferUtil.TEMP_BUF_POOL_SIZE];
         }
 
-        private int next(int var1) {
-            return (var1 + 1) % DirectBufferUtil.TEMP_BUF_POOL_SIZE;
+        private int next(int size) {
+            return (size + 1) % DirectBufferUtil.TEMP_BUF_POOL_SIZE;
         }
 
-        ByteBuffer get(int var1) {
-            assert !DirectBufferUtil.isBufferTooLarge(var1);
+        ByteBuffer get(int size) {
+            assert !DirectBufferUtil.isBufferTooLarge(size);
 
             if (this.count == 0) {
                 return null;
             } else {
                 ByteBuffer[] var2 = this.buffers;
                 ByteBuffer var3 = var2[this.start];
-                if (var3.capacity() < var1) {
+                if (var3.capacity() < size) {
                     var3 = null;
                     int var4 = this.start;
 
@@ -127,7 +123,7 @@ public class DirectBufferUtil {
                             break;
                         }
 
-                        if (var5.capacity() >= var1) {
+                        if (var5.capacity() >= size) {
                             var3 = var5;
                             break;
                         }
@@ -144,19 +140,19 @@ public class DirectBufferUtil {
                 this.start = this.next(this.start);
                 --this.count;
                 var3.rewind();
-                var3.limit(var1);
+                var3.limit(size);
                 return var3;
             }
         }
 
-        boolean offerFirst(ByteBuffer var1) {
-            assert !DirectBufferUtil.isBufferTooLarge(var1);
+        boolean offerFirst(ByteBuffer buffer) {
+            assert !DirectBufferUtil.isBufferTooLarge(buffer);
 
             if (this.count >= DirectBufferUtil.TEMP_BUF_POOL_SIZE) {
                 return false;
             } else {
                 this.start = (this.start + DirectBufferUtil.TEMP_BUF_POOL_SIZE - 1) % DirectBufferUtil.TEMP_BUF_POOL_SIZE;
-                this.buffers[this.start] = var1;
+                this.buffers[this.start] = buffer;
                 ++this.count;
                 return true;
             }
@@ -169,11 +165,11 @@ public class DirectBufferUtil {
         ByteBuffer removeFirst() {
             assert this.count > 0;
 
-            ByteBuffer var1 = this.buffers[this.start];
+            ByteBuffer firstBuffer = this.buffers[this.start];
             this.buffers[this.start] = null;
             this.start = this.next(this.start);
             --this.count;
-            return var1;
+            return firstBuffer;
         }
     }
 }

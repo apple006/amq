@@ -1,8 +1,6 @@
 package com.artlongs.amq.demo;
 
-import com.artlongs.amq.core.Message;
-import com.artlongs.amq.core.MqConfig;
-import com.artlongs.amq.core.aio.AioPipe;
+import com.artlongs.amq.core.*;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -19,15 +17,14 @@ public class TestSend {
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
         ExecutorService pool = Executors.newFixedThreadPool(MqConfig.connect_thread_pool_size);
 
-        AioMqClient<Message> client = new AioMqClient(MqConfig.host, MqConfig.port, new MqProtocol(), new MqServerProcessor());
+        MqClientProcessor processor = new MqClientProcessor();
+        AioMqClient<Message> client = new AioMqClient(MqConfig.host, MqConfig.port, new MqProtocol(), processor);
         Thread t = new Thread(client);
         t.setDaemon(true);
         pool.submit(t);
         client.start();
+        processor.publish("topic_hello", "hello linton");
 
-        AioPipe pipe = client.getPipe();
-
-        pipe.write(client.buildMessage("topic_hello","hello,leeton",Message.SPREAD.TOPIC));
     }
 
 }
