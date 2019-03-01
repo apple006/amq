@@ -10,20 +10,26 @@ import java.util.concurrent.Executors;
 /**
  * Func :
  *
- * @author: leeton on 2019/2/25.
+ * @author: leeton on 2019/3/1.
  */
-public class TestSend {
+public class TestPing {
 
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
         ExecutorService pool = Executors.newFixedThreadPool(MqConfig.connect_thread_pool_size);
-
         MqClientProcessor processor = new MqClientProcessor();
         AioMqClient<Message> client = new AioMqClient(MqConfig.host, MqConfig.port, new MqProtocol(), processor);
         Thread t = new Thread(client);
         t.setDaemon(true);
         pool.submit(t);
         client.start();
-        processor.onlyPublish("topic_hello", "hello linton");
+        //
+
+        Message message = processor.publishJob("topic_get_userById",1);
+        System.err.println(message);
+
+
+
+
 
     }
 

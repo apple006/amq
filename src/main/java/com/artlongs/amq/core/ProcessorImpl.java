@@ -43,6 +43,8 @@ public enum ProcessorImpl implements Processor {
      * 发送失败的消息数据缓存 map(messageId,Message)
      */
     public static ConcurrentSkipListMap<String, Message> cache_falt_message =   new ConcurrentSkipListMap();
+    public static ConcurrentSkipListMap<String, Message> cache_public_job =   new ConcurrentSkipListMap();
+    public static ConcurrentSkipListMap<String, Message> cache_accept_job =   new ConcurrentSkipListMap();
 
     /**
      * 客户端订阅的主题 map(messageId,Subscribe)
@@ -55,26 +57,21 @@ public enum ProcessorImpl implements Processor {
     private static final int WORKER_BUFFER_SIZE = 1024 * 32;
     private static final int NUM_WORKERS = 2;
 
-    //创建消息多线程分发器 ringBuffer
+    //创建消息多线程任务分发器 ringBuffer
     private final RingBuffer<JobEvent> job_ringbuffer;
 
-    // 业务处理 worker pool
+    // 业务处理 worker
     private final RingBuffer<JobEvent> buz_worker;
-
-    // 消息持久化 worker pool
-    private final RingBuffer<JobEvent> persistent_worker;
-
     // 业务处理 worker pool
     private final WorkerPool<JobEvent> buz_worker_pool;
 
+    // 消息持久化 worker
+    private RingBuffer<JobEvent> persistent_worker = null;
     // 消息持久化 worker pool
-    private final WorkerPool<JobEvent> persistent_worker_pool;
+    private WorkerPool<JobEvent> persistent_worker_pool = null;
+
     // scheduled to resend message
     final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
-    final Runnable beeper = ()-> System.out.println("The scheduler task is running!");
-
-
-
 
     public ProcessorImpl me(){
         return this;
@@ -83,10 +80,11 @@ public enum ProcessorImpl implements Processor {
     ProcessorImpl() {
         this.job_ringbuffer = createDisrupter().start();
         this.buz_worker_pool= createWorkerPool(new BuzEventHandler());
-        this.persistent_worker_pool = createWorkerPool(new StoreEventHandler());
         this.buz_worker = buz_worker_pool.start(Executors.newFixedThreadPool(NUM_WORKERS, DaemonThreadFactory.INSTANCE));
-        this.persistent_worker = persistent_worker_pool.start(Executors.newFixedThreadPool(NUM_WORKERS, DaemonThreadFactory.INSTANCE));
-
+        if(MqConfig.store_all_message_to_db){
+            this.persistent_worker_pool = createWorkerPool(new StoreEventHandler());
+            this.persistent_worker = persistent_worker_pool.start(Executors.newFixedThreadPool(NUM_WORKERS, DaemonThreadFactory.INSTANCE));
+        }
         final ScheduledFuture<?> delaySend = scheduler.scheduleWithFixedDelay(
                 delaySendOnScheduled(), 5, MqConfig.msg_not_acked_resend_period, SECONDS);
 
@@ -118,15 +116,10 @@ public enum ProcessorImpl implements Processor {
      * @return
      */
     private WorkerPool<JobEvent> createWorkerPool(WorkHandler workHandler) {
-
-        final RingBuffer<JobEvent> ringBuffer = RingBuffer.createSingleProducer(JobEvent.EVENT_FACTORY,
-                WORKER_BUFFER_SIZE, new BlockingWaitStrategy());
-
+        final RingBuffer<JobEvent> ringBuffer = RingBuffer.createSingleProducer(JobEvent.EVENT_FACTORY, WORKER_BUFFER_SIZE, new BlockingWaitStrategy());
         WorkerPool<JobEvent> workerPool = new WorkerPool<JobEvent>(ringBuffer, ringBuffer.newBarrier(), new FatalExceptionHandler(), workHandler);
-
         //init sequences
         ringBuffer.addGatingSequences(workerPool.getWorkerSequences());
-
         return workerPool;
 
     }
@@ -134,57 +127,21 @@ public enum ProcessorImpl implements Processor {
     @Override
     public void onMessage(AioPipe pipe, Message message) {
         String msgId = message.getK().getId();
-        if (message.isAcked()) { // ack msg
-            if (Subscribe.Life.SPARK == message.getLife()) {
+        if (message.isAcked()) { // 确认收到消息
+            if (Message.Life.SPARK == message.getLife()) {
                 removeSubscribeCacheOnAck(msgId);
                 removeDbDataOfDone(msgId);
             }else {
-                String clientNode = pipe.getLocalAddress().toString();
-                flagOnAck(clientNode,message);
+                Integer clientNode = getNode(pipe);
+                upStatOfACK(clientNode,message);
             }
         }else {
-            if(message.isSubscribe()){ // subscribe msg
+            if(Message.Type.SUBSCRIBE == message.getType()){ // subscribe msg
                 addSubscribeIF(pipe,message);
-            }else { // common buz msg
-                addCache(msgId, message);
+            }else {
+                cacheAllMessage(msgId, message);
                 // pulish message job to RingBuffer
                 pulishJobEvent(message);
-            }
-        }
-    }
-
-    @Override
-    public Message getMessage(String msgId) {
-        return cache_all_message.get(msgId);
-    }
-
-
-    public Message getMessageOfCache(String id) {
-       return cache_all_message.get(id);
-    }
-
-    private void addCache(String key, Message message) {
-        cache_all_message.putIfAbsent(key, message);
-    }
-
-    public void removeCacheOfDone(String key){
-        cache_all_message.remove(key);
-        cache_falt_message.remove(key);
-    }
-
-    public void removeDbDataOfDone(String key) {
-        Store.INST.remove(key);
-        Store.INST.removeOfRetryList(key);
-        Store.INST.removeOfUptime(key);
-    }
-
-    private void removeSubscribeCacheOnAck(String ackId) {
-        Iterator<Subscribe> iter = subscribe_cache.iterator();
-        while (iter.hasNext()) {
-            Subscribe subscribe = iter.next();
-            if(ackId.equals(subscribe.getId())){
-                subscribe_cache.remove(subscribe.getIdx());
-                break;
             }
         }
     }
@@ -192,9 +149,10 @@ public enum ProcessorImpl implements Processor {
 
     /**
      * 标记消息已经收到
+     * @param clientNode 消息的通道 ID
      * @param ack
      */
-    private void flagOnAck(String clientNode, Message ack) {
+    private void upStatOfACK(Integer clientNode, Message ack) {
         String ackId = ack.getK().getId();
         Message message = getMessageOfCache(ackId);
         if (null != message) {
@@ -239,7 +197,9 @@ public enum ProcessorImpl implements Processor {
     public void publishJobToWorker(Message message) {
         message.getStat().setOn(Message.ON.SENDING);
         publishJobToWorkerPool(buz_worker, message);
-        publishJobToWorkerPool(persistent_worker, message);
+        if(MqConfig.store_all_message_to_db){
+            publishJobToWorkerPool(persistent_worker, message);
+        }
     }
 
     /**
@@ -284,15 +244,14 @@ public enum ProcessorImpl implements Processor {
             }
             String msgId = message.getK().getId();
             // 当客户端全部 ACK,则 remove 掉缓存
-            int sends = message.ackedSize();
-            if (sends >= subscribeList.size()) {
+            int ackedSize = message.ackedSize();
+            if (ackedSize >= subscribeList.size()) {
                 removeCacheOfDone(msgId);
                 removeDbDataOfDone(msgId);
                 return;
             }
 
-            String remoteAddressStr = subscribe.getPipe().getRemoteAddress().toString();
-            if(isACKED(message, remoteAddressStr)) return;
+            if(isACKED(message, subscribe)) return;
 
             changeMessageOnReply(subscribe, message);
             boolean writed = subscribe.getPipe().write(message);
@@ -364,14 +323,14 @@ public enum ProcessorImpl implements Processor {
     /**
      * 当前的消息,客户端已确认
      * @param message
-     * @param node
+     * @param subscribe
      * @return
      */
-    private boolean isACKED(Message message, String node) {
-        Set<String> nodesConfirmed = message.getStat().getNodesConfirmed();
+    private boolean isACKED(Message message, Subscribe subscribe) {
+        Set<Integer> nodesConfirmed = message.getStat().getNodesConfirmed();
         if (C.notEmpty(nodesConfirmed)) {
-            for (String confirm : nodesConfirmed) {
-                if(confirm.equalsIgnoreCase(node)) return true;
+            for (Integer confirm : nodesConfirmed) {
+                if(confirm.equals(subscribe.getPipe().getId())) return true;
             }
         }
         return false;
@@ -390,14 +349,64 @@ public enum ProcessorImpl implements Processor {
     }
 
     public void onSendSuccToOption(List<Subscribe>subscribeList,Subscribe listen,Message message){
-        message.upStatOfSended(listen.getId());
-        if (Subscribe.Life.SPARK == listen.getLife()) {
+        message.upStatOfSended(listen.getPipe().getId());
+        if (Message.Life.SPARK == listen.getLife()) {
             listen.remove(subscribeList, listen);
         }
     }
 
     public void publishJobToWorkerPool(RingBuffer<JobEvent> ringBuffer,Message message){
         ringBuffer.publishEvent(JobEvent::translate, message);
+    }
+
+    /**
+     * 客户端的通信通道 ID
+     * @param pipe
+     * @return
+     */
+    private Integer getNode(AioPipe pipe) {
+        return pipe.getId();
+    }
+    @Override
+    public Message getMessage(String msgId) {
+        return cache_all_message.get(msgId);
+    }
+    public Message getMessageOfCache(String id) {
+        return cache_all_message.get(id);
+    }
+
+    private void cacheAllMessage(String key, Message message) {
+        cache_all_message.putIfAbsent(key, message);
+    }
+
+    public void removeCacheOfDone(String key){
+        cache_all_message.remove(key);
+        cache_falt_message.remove(key);
+    }
+
+    public void removeDbDataOfDone(String key) {
+        Store.INST.remove(key);
+        Store.INST.removeOfRetryList(key);
+        Store.INST.removeOfUptime(key);
+    }
+
+    private void removeSubscribeCacheOnAck(String ackId) {
+        Iterator<Subscribe> iter = subscribe_cache.iterator();
+        while (iter.hasNext()) {
+            Subscribe subscribe = iter.next();
+            if(ackId.equals(subscribe.getId())){
+                subscribe_cache.remove(subscribe.getIdx());
+                break;
+            }
+        }
+    }
+
+    private boolean isJobPublish(Message message) {
+        return Message.Type.PUBLISH_JOB == message.getType();
+    }
+
+    private boolean isAcceptJob(Message message) {
+        return Message.Type.ACCEPT_JOB == message.getType();
     }
 
 

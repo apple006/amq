@@ -22,16 +22,12 @@ public class TestRecv1 {
         t.setDaemon(true);
         pool.submit(t);
         client.start();
-        //
-
-        Message message = processor.pingpong("topic_hello",null);
-        System.err.println(message);
 
         //
- /*       Call<Message> callback = (msg)->{
+        Call<Message> callback = (msg)->{
             execBack(msg);
         };
-        processor.subscribe("topic_hello",callback);*/
+        processor.subscribe("topic_hello",callback);
 
 
 

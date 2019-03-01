@@ -23,8 +23,9 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     private V v; // centent body
     private Stat stat;
     private String subscribeId;  //订阅者 ID
-    private Subscribe.Life life;
-    private Subscribe.Listen listen;
+    private Life life;
+    private Listen listen;
+    private Type type;
     private boolean acked;
 
     ////=============================================
@@ -33,6 +34,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         Message m = new Message();
         m.k = k;
         m.v = v;
+        m.type = Type.PUBLISH;
         Stat stat = new Stat()
                 .setCtime(now)
                 .setMtime(now)
@@ -48,11 +50,112 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         return m;
     }
 
-    public static <V> Message ofSubscribe(Key k, V v, Subscribe.Life life, Subscribe.Listen listen) {
-        return ofDef(k, v).setSubscribeId(k.id).setLife(life).setListen(listen);
+    /**
+     * 创建 ACK 消息
+     *
+     * @return
+     */
+    public static Message ofAcked(String msgId, Life life) {
+        Message m = new Message();
+        m.setK(new Key());
+        m.k.id = msgId;
+        m.life = life;
+        m.setType(Type.ACK);
+        m.acked = true;
+        m.k.spread = null;
+        m.k.sendNode = null;
+        m.k.recNode = null;
+        m.k.topic = null;
+        m.stat = null;
+        m.v = null;
+        return m;
     }
 
-    public void upStatOfSended(String node) {
+    // ======================================================= MESSAGE BUILD BEGIN ======================================
+    public static <V> Message buildCommonMessage(String topic, V data, Integer sendNode, Message.SPREAD spread) {
+        Message.Key mKey = key(topic, sendNode, Message.SPREAD.TOPIC);
+        return Message.ofDef(mKey, data);
+    }
+
+    public static <V> Message buildSubscribe(String topic, V v, Integer sendNode, Message.Life life, Message.Listen listen) {
+        Message.Key mKey = key(topic, sendNode, Message.SPREAD.TOPIC);
+        Message message = Message.ofSubscribe(mKey, v, life, listen);
+        return message;
+    }
+
+    public static <V> Message buildPublishJob(String topic, V v, Integer sendNode) {
+        Message.Key mKey = key(topic, sendNode, Message.SPREAD.TOPIC);
+        Message message = Message.ofPublicJob(mKey, v);
+        return message;
+    }
+
+    public static <V> Message buildAcceptJob(String topic, Integer sendNode) {
+        Message.Key mKey = key(topic, sendNode, Message.SPREAD.TOPIC);
+        Message message = Message.ofAcceptJob(mKey);
+        return message;
+    }
+
+    public static <V> Message buildFinishJob(Integer jobId, String topic, V v, Integer sendNode) {
+        String jobTopic = buildFinishJobTopic(jobId, topic);
+        Message.Key mKey = key(jobTopic, sendNode, Message.SPREAD.TOPIC);
+        Message message = Message.ofFinishJob(mKey, v);
+        return message;
+    }
+
+    public static Message buildAck(String msgId, Message.Life life) {
+        Message message = Message.ofAcked(msgId, life);
+        return message;
+    }
+
+    public static Message.Key key(String topic, Integer sendNode, Message.SPREAD spread) {
+        Message.Key mKey = new Message.Key(ID.ONLY.id(), topic, spread);
+        mKey.setSendNode(sendNode);
+        return mKey;
+    }
+
+    /**
+     * 接收任务执行结果的订阅
+     * @param providerPipeId
+     * @param providerMsg
+     * @return
+     */
+    public static Message buildJobResultListen(Integer providerPipeId, Message providerMsg) {
+        String callBackTopic = buildFinishJobTopic(providerPipeId ,providerMsg.getK().getTopic());
+        Message.Key mKey = new Message.Key(ID.ONLY.id(), callBackTopic, Message.SPREAD.TOPIC);
+        Message jobCallBack = Message.ofSubscribe(mKey, null, Life.SPARK, Listen.FUTURE_AND_ONCE);
+        return jobCallBack;
+    }
+
+
+    /**
+     * 任务结果的TOPIC
+     * @param providerPipeId 实际上是任务发布者的 pipeId
+     * @param oldTopic 原来的 TOPIC
+     * @return
+     */
+    private static String buildFinishJobTopic(Integer providerPipeId, String oldTopic) {
+        return providerPipeId + "_" + oldTopic;
+    }
+
+    private static <V> Message ofSubscribe(Key k, V v, Life life, Listen listen) {
+        return ofDef(k, v).setSubscribeId(k.id).setLife(life).setListen(listen).setType(Type.SUBSCRIBE);
+    }
+
+    private static <V> Message ofPublicJob(Key k, V v) {
+        return ofDef(k, v).setLife(Life.SPARK).setType(Type.PUBLISH_JOB);
+    }
+
+    private static <V> Message ofAcceptJob(Key k) {
+        return ofSubscribe(k, null, Life.SPARK, Listen.FUTURE_AND_ONCE).setType(Type.ACCEPT_JOB);
+    }
+
+    private static <V> Message ofFinishJob(Key k, V v) {
+        return ofDef(k, v).setLife(Life.SPARK).setType(Type.FINISH_JOB);
+    }
+
+    // ======================================================= MESSAGE BUILD END =========================================
+
+    public void upStatOfSended(Integer node) {
         Stat stat = getStat();
         if (null == stat.nodesDelivered) {
             stat.nodesDelivered = C.newSet();
@@ -62,14 +165,14 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         stat.setOn(Message.ON.SENED);
     }
 
-    public void upStatOfACK(String node) {
+    public void upStatOfACK(Integer node) {
         Stat stat = getStat();
         if (null == stat.nodesConfirmed) {
             stat.nodesConfirmed = C.newSet();
         }
         stat.nodesConfirmed.add(node);
         stat.setMtime(DateUtils.now());
-        stat.setOn(Message.ON.SENED);
+        stat.setOn(ON.ACKED);
     }
 
     /**
@@ -92,31 +195,12 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         }
     }
 
-    public int ackedSize(){
-        if(null == this.getStat()) return 0;
-        if(null == this.getStat().getNodesConfirmed()) return 0;
+    public int ackedSize() {
+        if (null == this.getStat()) return 0;
+        if (null == this.getStat().getNodesConfirmed()) return 0;
         return this.getStat().getNodesConfirmed().size();
     }
 
-    /**
-     * 创建 ACK 消息
-     *
-     * @return
-     */
-    public static Message ofAcked(String msgId, Subscribe.Life life) {
-        Message m = new Message();
-        m.setK(new Key());
-        m.k.id = msgId;
-        m.life = life;
-        m.acked = true;
-        m.k.spread = null;
-        m.k.sendNode = null;
-        m.k.recNode = null;
-        m.k.topic = null;
-        m.stat = null;
-        m.v = null;
-        return m;
-    }
 
     ////=============================================
 
@@ -161,7 +245,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     }
 
     public Boolean isSubscribe() {
-        return (null != subscribeId) ;
+        return (null != subscribeId);
     }
 
     public Message<K, V> setSubscribeId(String subscribeId) {
@@ -173,11 +257,11 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         return subscribeId;
     }
 
-    public Subscribe.Life getLife() {
+    public Life getLife() {
         return life;
     }
 
-    public Message<K, V> setLife(Subscribe.Life life) {
+    public Message<K, V> setLife(Life life) {
         this.life = life;
         return this;
     }
@@ -191,12 +275,21 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         return this;
     }
 
-    public Subscribe.Listen getListen() {
+    public Listen getListen() {
         return listen;
     }
 
-    public Message<K, V> setListen(Subscribe.Listen listen) {
+    public Message<K, V> setListen(Listen listen) {
         this.listen = listen;
+        return this;
+    }
+
+    public Type getType() {
+        return type;
+    }
+
+    public Message setType(Type type) {
+        this.type = type;
         return this;
     }
 
@@ -219,8 +312,8 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         private String id;
         private String topic;
         private SPREAD spread;
-        private String recNode;   //接收者 (ip+port)
-        private String sendNode;  //发布者 (ip+port)
+        private Integer recNode;   //接收者 (pipeId)
+        private Integer sendNode;  //发布者 (pipeId)
 
         public Key(String id, String topic, SPREAD spread) {
             this.id = id;
@@ -228,7 +321,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             this.spread = spread;
         }
 
-        public Key(String id, String topic, SPREAD spread, String recNode, String sendNode) {
+        public Key(String id, String topic, SPREAD spread, Integer recNode, Integer sendNode) {
             this.id = id;
             this.topic = topic;
             this.spread = spread;
@@ -242,7 +335,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
          * @param clientId
          * @return
          */
-        public String createAndSetId(String clientId) {
+        public String createId(String clientId) {
             String id = clientId + ID.ONLY.id();
             setId(id);
             return id;
@@ -266,11 +359,11 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             return spread;
         }
 
-        public String getRecNode() {
+        public Integer getRecNode() {
             return recNode;
         }
 
-        public String getSendNode() {
+        public Integer getSendNode() {
             return sendNode;
         }
 
@@ -289,12 +382,12 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             return this;
         }
 
-        public Key setRecNode(String recNode) {
+        public Key setRecNode(Integer recNode) {
             this.recNode = recNode;
             return this;
         }
 
-        public Key setSendNode(String sendNode) {
+        public Key setSendNode(Integer sendNode) {
             this.sendNode = sendNode;
             return this;
         }
@@ -309,13 +402,13 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     public static class Stat {
         private static final long serialVersionUID = 1L;
         private ON on;
-        private Long ttl;   //Time To Live
-        private Long ctime; //create time
-        private Long mtime; //modify time
-        private int delay; //延迟发送(消息未ACKED)
-        private int retry; //重试次数(发送失败之后再重发)
-        private Set<String> nodesDelivered; // 已送达
-        private Set<String> nodesConfirmed; // 已确认
+        private Long ttl;   // Time To Live, 消息的存活时间,如果未成功发送,则最多存活一天
+        private Long ctime; // create time
+        private Long mtime; // modify time
+        private int delay;  // 延迟发送(消息未ACKED)
+        private int retry;  // 重试次数(发送失败之后再重发)
+        private Set<Integer> nodesDelivered; // 已送达
+        private Set<Integer> nodesConfirmed; // 已确认
 
         public ON getOn() {
             return on;
@@ -371,20 +464,20 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             return this;
         }
 
-        public Set<String> getNodesDelivered() {
+        public Set<Integer> getNodesDelivered() {
             return nodesDelivered;
         }
 
-        public Stat setNodesDelivered(Set<String> nodesDelivered) {
+        public Stat setNodesDelivered(Set<Integer> nodesDelivered) {
             this.nodesDelivered = nodesDelivered;
             return this;
         }
 
-        public Set<String> getNodesConfirmed() {
+        public Set<Integer> getNodesConfirmed() {
             return nodesConfirmed;
         }
 
-        public Stat setNodesConfirmed(Set<String> nodesConfirmed) {
+        public Stat setNodesConfirmed(Set<Integer> nodesConfirmed) {
             this.nodesConfirmed = nodesConfirmed;
             return this;
         }
@@ -399,7 +492,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
      * Message status
      */
     public enum ON {
-        QUENED, SENDING,SENDONFAIL, SENED, ACKED, DONE;
+        QUENED, SENDING, SENDONFAIL, SENED, ACKED, DONE;
     }
 
     /**
@@ -408,6 +501,28 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     public enum SPREAD {
         TOPIC, // 普通的消息类型
         DIRECT; // 直连类型,带 callback 效果
+    }
+
+    /**
+     * 消息类型
+     */
+    public enum Type {
+        SUBSCRIBE, PUBLISH, ACK, PUBLISH_JOB, ACCEPT_JOB, FINISH_JOB;
+    }
+
+    /**
+     * 消息的生命周期
+     */
+    public enum Life {
+        ALL_COMFIRM, SPARK;
+    }
+
+    /**
+     * 监听消息的模式
+     */
+    public enum Listen {
+        FUTURE_AND_ONCE, // 使用 FUTURE 机制,但只运行一次
+        CALLBACK; // 回调的模式
     }
 
 

@@ -272,7 +272,7 @@ public class AioPipe<T> {
     public synchronized void close(boolean immediate) {
         //status == SESSION_STATUS_CLOSED说明close方法被重复调用
         if (status == CLOSED) {
-            logger.warn("ignore, pipe:{} is closed:", getPipeId());
+            logger.warn("ignore, pipe:{} is closed:", getId());
             writeSemaphore.release();
             return;
         }
@@ -312,7 +312,7 @@ public class AioPipe<T> {
     /**
      * 获取当前 pipe 的唯一标识
      */
-    public final Integer getPipeId() {
+    public final Integer getId() {
         return hashCode();
     }
 

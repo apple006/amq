@@ -18,29 +18,16 @@ public class Subscribe implements Serializable {
     private String id;
     private String topic;
     private AioPipe pipe;
-    private Life life;
-    private Listen listen;
+    private Message.Life life;
+    private Message.Listen listen;
     private int idx; // 在队列里的 index
 
-    public Subscribe(String id, String topic, AioPipe pipe, Life life,Listen listen) {
+    public Subscribe(String id, String topic, AioPipe pipe, Message.Life life,Message.Listen listen) {
         this.id = id;
         this.topic = topic;
         this.pipe = pipe;
         this.life = life;
         this.listen = listen;
-    }
-
-    /**
-     * 订阅的生命周期
-     */
-    public enum Life{ ALL_COMFIRM, SPARK;}
-
-    /**
-     * 监听消息的模式
-     */
-    public enum Listen{
-        PINGPONG, // 使用 Future 读取一次F
-        CALLBACK; // 回调的模式
     }
 
     public void remove(Collection<Subscribe> subscribeList, Subscribe target) {
@@ -69,6 +56,14 @@ public class Subscribe implements Serializable {
         this.id = id;
         return this;
     }
+    public int getIdx() {
+        return idx;
+    }
+
+    public Subscribe setIdx(int idx) {
+        this.idx = idx;
+        return this;
+    }
 
     public String getTopic() {
         return topic;
@@ -88,33 +83,21 @@ public class Subscribe implements Serializable {
         return this;
     }
 
-    public Life getLife() {
+    public Message.Life getLife() {
         return life;
     }
 
-    public Subscribe setLife(Life life) {
+    public Subscribe setLife(Message.Life life) {
         this.life = life;
         return this;
     }
 
-    public int getIdx() {
-        return idx;
-    }
-
-    public Subscribe setIdx(int idx) {
-        this.idx = idx;
-        return this;
-    }
-
-
-    public Listen getListen() {
+    public Message.Listen getListen() {
         return listen;
     }
 
-    public Subscribe setListen(Listen listen) {
+    public Subscribe setListen(Message.Listen listen) {
         this.listen = listen;
         return this;
     }
-
-
 }

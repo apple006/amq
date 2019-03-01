@@ -44,6 +44,12 @@ public class MqConfig {
 	// cache map size
 	public static int mq_cache_map_sizes = 1024;
 
+	// 自动确认收到消息
+	public static boolean mq_auto_acked = true;
+
+	// 保存所有的消息(持久化)
+	public static boolean store_all_message_to_db = false;
+
 	//========================== DB ITME =====================================
 	// MAPDB 数据库文件
 	public static final String mapdb_file_path = "/volumes/work/mapdb/";

@@ -10,15 +10,12 @@ public interface MqClientAction {
 
     <V> void subscribe(String topic, V v, Call callBack);
 
-    /**
-     * 手动拉取消息,只获取一次
-     * @param topic
-     * @param v
-     * @return
-     */
-    <V> Message pingpong(String topic, V v);
+    <V> Message publishJob(String topic, V v);
 
-    <V> void publish(String topic, V v);
+    <V> Message acceptJob(String topic);
+    <V> boolean finishJob(String topic, V v,Message acceptJob);
+
+    <V> boolean onlyPublish(String topic, V v);
 
     /**
      * 确认收到消息
@@ -27,7 +24,7 @@ public interface MqClientAction {
      * @param life
      * @return
      */
-    boolean ack(String messageId, Subscribe.Life life);
+    boolean ack(String messageId, Message.Life life);
 
 
 }
