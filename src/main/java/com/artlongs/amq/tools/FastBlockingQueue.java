@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-final class FastBlockingQueue {
+public final class FastBlockingQueue {
 
 
     private final ByteBuffer[] items;
@@ -71,17 +71,19 @@ final class FastBlockingQueue {
     }
 
 
-    public int put(ByteBuffer e) throws InterruptedException {
-        lock.lockInterruptibly();
+    public int put(ByteBuffer buffer) {
         try {
+            lock.lockInterruptibly();
             while (count == items.length) {
                 notFull.await();
             }
-            enqueue(e);
-            return count;
+            enqueue(buffer);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         } finally {
             lock.unlock();
         }
+        return count;
     }
 
     public ByteBuffer poll() {

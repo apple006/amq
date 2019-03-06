@@ -15,7 +15,7 @@ import java.util.concurrent.Executors;
 public class TestRecv1 {
 
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
-        ExecutorService pool = Executors.newFixedThreadPool(MqConfig.connect_thread_pool_size);
+        ExecutorService pool = Executors.newFixedThreadPool(MqConfig.client_connect_thread_pool_size);
         MqClientProcessor processor = new MqClientProcessor();
         AioMqClient<Message> client = new AioMqClient(MqConfig.host, MqConfig.port, new MqProtocol(), processor);
         Thread t = new Thread(client);

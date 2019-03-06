@@ -3,7 +3,7 @@ package com.artlongs.amq.core;
 import com.artlongs.amq.core.aio.AioPipe;
 import com.artlongs.amq.core.aio.AioProcessor;
 import com.artlongs.amq.core.aio.State;
-import org.jetbrains.annotations.Nullable;
+import org.osgl.util.C;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -17,19 +17,22 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MqClientProcessor implements AioProcessor<Message>, MqClientAction {
 
     private AioPipe<Message> pipe;
-    private Map<String, CompletableFuture<Message>> futureResultMap = new ConcurrentHashMap<>();
     private Map<String, Call> callBackMap = new ConcurrentHashMap<>();
+    /**
+     * 客户端返回的消息包装
+     */
+    public Map<String, CompletableFuture<Message>> futureResultMap = new ConcurrentHashMap<>();
 
     @Override
     public void process(AioPipe<Message> pipe, Message msg) {
         System.err.println(" Client,收到消息: ");
-        switch (msg.getListen()) {
-            case CALLBACK:
-                callBackMap.get(msg.getSubscribeId()).back(msg);
-                break;
-            case FUTURE_AND_ONCE:
-                futureResultMap.get(msg.getSubscribeId()).complete(msg);
-                break;
+        String subscribeId = msg.getSubscribeId();
+        if(C.notEmpty(callBackMap) && null != callBackMap.get(subscribeId)){
+            callBackMap.get(subscribeId).back(msg);
+            removeCallbackMap(subscribeId);
+        }
+        if(C.notEmpty(futureResultMap) && null != futureResultMap.get(subscribeId)){
+            futureResultMap.get(subscribeId).complete(msg);
         }
     }
 
@@ -40,7 +43,7 @@ public class MqClientProcessor implements AioProcessor<Message>, MqClientAction 
 
     @Override
     public <V> void subscribe(String topic, V v, Call callBack) {
-        Message subscribe = Message.buildSubscribe(topic, v, getNode(), Message.Life.ALL_COMFIRM, Message.Listen.CALLBACK);
+        Message subscribe = Message.buildSubscribe(topic, v, getNode(), Message.Life.ALL_ACKED, Message.Listen.CALLBACK);
         this.pipe.write(subscribe);
         callBackMap.put(subscribe.getSubscribeId(), callBack);
     }
@@ -48,21 +51,31 @@ public class MqClientProcessor implements AioProcessor<Message>, MqClientAction 
     @Override
     public <V> Message publishJob(String topic, V v) {
         Message job = Message.buildPublishJob(topic, v, getNode());
+        String jobId = job.getK().getId();
+        // 发布一个 future ,等任务完成后读取结果.
+        futureResultMap.put(jobId, new CompletableFuture<Message>());
         this.pipe.write(job);
-        Message jobResultListen = Message.buildJobResultListen(pipe.getId(), job);
-        return sendAndRecvOfFuture(jobResultListen);
+        Message result = futureResultMap.get(jobId).join();
+        if (null != result) {
+            removeFutureResultMap(result.getSubscribeId());
+            if (MqConfig.mq_auto_acked) {
+                ack(result.getSubscribeId(), Message.Life.SPARK);
+            }
+        }
+
+        return result;
     }
 
     @Override
-    public <V> Message acceptJob(String topic) {
+    public void acceptJob(String topic,Call acceptJobThenExecute) {
         Message subscribe = Message.buildAcceptJob(topic, getNode());
-        return sendAndRecvOfFuture(subscribe);
+        this.pipe.write(subscribe);
+        callBackMap.put(subscribe.getSubscribeId(), acceptJobThenExecute);
     }
 
-    @Override
     public <V> boolean finishJob(String topic, V v, Message acceptJob) {
         try {
-            Message finishJob = Message.buildFinishJob(getJobid(acceptJob), topic, v, getNode());
+            Message<Message.Key,V> finishJob = Message.buildFinishJob(acceptJob.getK().getId(), topic, v, getNode());
             this.pipe.write(finishJob);
             return true;
         } catch (Exception e) {
@@ -93,17 +106,7 @@ public class MqClientProcessor implements AioProcessor<Message>, MqClientAction 
         return this.pipe.getId();
     }
 
-    /**
-     * 实际上是任务发布者的 pipeId
-     * @param job
-     * @return
-     */
-    private Integer getJobid(Message job) {
-        Integer jobId = job.getK().getSendNode();
-        return jobId;
-    }
-
-    @Override
+     @Override
     public void stateEvent(AioPipe<Message> pipe, State state, Throwable throwable) {
         switch (state) {
             case NEW_PIPE:
@@ -115,18 +118,17 @@ public class MqClientProcessor implements AioProcessor<Message>, MqClientAction 
         }
     }
 
-
-    @Nullable
-    private Message sendAndRecvOfFuture(Message subscribe) {
-        this.pipe.write(subscribe);
-        CompletableFuture<Message> future = new CompletableFuture<>();
-        futureResultMap.put(subscribe.getSubscribeId(), future);
-        Message result = future.join();
-        if (MqConfig.mq_auto_acked && result != null) { // autoAck
-            ack(subscribe.getK().getId(), Message.Life.SPARK);
-        }
-        return result;
+    private void removeFutureResultMap(String key) {
+        futureResultMap.remove(key);
     }
+
+    private void removeCallbackMap(String key) {
+        callBackMap.remove(key);
+    }
+
+
+
+
 
 
 }

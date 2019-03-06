@@ -16,8 +16,7 @@ public class MqProtocol implements Protocol<Message> {
 
     @Override
     public ByteBuffer encode(Message message) {
-        byte[] bytes = serializer.toByte(message);
-        return wrap(bytes);
+        return wrap(serializer.toByte(message));
     }
 
     @Override

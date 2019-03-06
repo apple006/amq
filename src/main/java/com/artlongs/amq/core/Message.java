@@ -95,7 +95,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         return message;
     }
 
-    public static <V> Message buildFinishJob(Integer jobId, String topic, V v, Integer sendNode) {
+    public static <V> Message buildFinishJob(String jobId, String topic, V v, Integer sendNode) {
         String jobTopic = buildFinishJobTopic(jobId, topic);
         Message.Key mKey = key(jobTopic, sendNode, Message.SPREAD.TOPIC);
         Message message = Message.ofFinishJob(mKey, v);
@@ -115,12 +115,12 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
     /**
      * 接收任务执行结果的订阅
-     * @param providerPipeId
+     * @param providerMsgId
      * @param providerMsg
      * @return
      */
-    public static Message buildJobResultListen(Integer providerPipeId, Message providerMsg) {
-        String callBackTopic = buildFinishJobTopic(providerPipeId ,providerMsg.getK().getTopic());
+    public static Message buildJobResultListen(String providerMsgId, String providerTopic) {
+        String callBackTopic = buildFinishJobTopic(providerMsgId ,providerTopic);
         Message.Key mKey = new Message.Key(ID.ONLY.id(), callBackTopic, Message.SPREAD.TOPIC);
         Message jobCallBack = Message.ofSubscribe(mKey, null, Life.SPARK, Listen.FUTURE_AND_ONCE);
         return jobCallBack;
@@ -129,12 +129,12 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
     /**
      * 任务结果的TOPIC
-     * @param providerPipeId 实际上是任务发布者的 pipeId
+     * @param providerMsgId 实际上是任务发布者的 MsgId
      * @param oldTopic 原来的 TOPIC
      * @return
      */
-    private static String buildFinishJobTopic(Integer providerPipeId, String oldTopic) {
-        return providerPipeId + "_" + oldTopic;
+    public static String buildFinishJobTopic(String providerMsgId, String oldTopic) {
+        return providerMsgId + "_" + oldTopic;
     }
 
     private static <V> Message ofSubscribe(Key k, V v, Life life, Listen listen) {
@@ -142,11 +142,11 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     }
 
     private static <V> Message ofPublicJob(Key k, V v) {
-        return ofDef(k, v).setLife(Life.SPARK).setType(Type.PUBLISH_JOB);
+        return ofDef(k, v).setLife(Life.ALL_ACKED).setListen(Listen.FUTURE_AND_ONCE).setType(Type.PUBLISH_JOB);
     }
 
     private static <V> Message ofAcceptJob(Key k) {
-        return ofSubscribe(k, null, Life.SPARK, Listen.FUTURE_AND_ONCE).setType(Type.ACCEPT_JOB);
+        return ofSubscribe(k, null, Life.ALL_ACKED, Listen.CALLBACK).setType(Type.ACCEPT_JOB);
     }
 
     private static <V> Message ofFinishJob(Key k, V v) {
@@ -514,7 +514,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
      * 消息的生命周期
      */
     public enum Life {
-        ALL_COMFIRM, SPARK;
+        ALL_ACKED, SPARK;
     }
 
     /**

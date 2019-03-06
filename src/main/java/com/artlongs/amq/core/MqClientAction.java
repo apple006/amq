@@ -12,8 +12,8 @@ public interface MqClientAction {
 
     <V> Message publishJob(String topic, V v);
 
-    <V> Message acceptJob(String topic);
-    <V> boolean finishJob(String topic, V v,Message acceptJob);
+    void acceptJob(String topic,Call acceptJobThenExecute);
+//    <V> boolean finishJob(String topic, V v,Message acceptJob);
 
     <V> boolean onlyPublish(String topic, V v);
 

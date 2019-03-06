@@ -25,6 +25,11 @@ public class DirectBufferUtil {
     }
 
 
+    /**
+     * 分配外部 buffer
+     * @param size
+     * @return
+     */
     public static ByteBuffer allocateDirectBuffer(int size) {
         if (isBufferTooLarge(size)) {
             return ByteBuffer.allocateDirect(size);
@@ -78,17 +83,20 @@ public class DirectBufferUtil {
         return 9223372036854775807L;
     }
 
-    private static boolean isBufferTooLarge(int var0) {
-        return (long) var0 > MAX_CACHED_BUFFER_SIZE;
+    private static boolean isBufferTooLarge(int size) {
+        return (long) size > MAX_CACHED_BUFFER_SIZE;
     }
 
-    private static boolean isBufferTooLarge(ByteBuffer var0) {
-        return isBufferTooLarge(var0.capacity());
+    private static boolean isBufferTooLarge(ByteBuffer buffer) {
+        if (buffer != null) {
+            return isBufferTooLarge(buffer.capacity());
+        }
+        return false;
     }
 
 
-    private static void free(ByteBuffer var0) {
-        ((DirectBuffer) var0).cleaner().clean();
+    private static void free(ByteBuffer buffer) {
+        ((DirectBuffer) buffer).cleaner().clean();
     }
 
 

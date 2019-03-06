@@ -34,12 +34,12 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
         try {
             aioPipe.getServerConfig().getProcessor().stateEvent(aioPipe, State.INPUT_EXCEPTION, exc);
         } catch (Exception e) {
-            LOGGER.debug(e.getMessage(), e);
+            LOGGER.error(e.getMessage(), e);
         }
         try {
             aioPipe.close();
         } catch (Exception e) {
-            LOGGER.debug(e.getMessage(), e);
+            LOGGER.error(e.getMessage(), e);
         }
     }
 }

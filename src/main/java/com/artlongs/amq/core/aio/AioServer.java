@@ -64,7 +64,7 @@ public class AioServer<T> implements Runnable{
      */
     public void start() throws IOException {
         if (config.isBannerEnabled()) {
-            LOGGER.info(config.BANNER + "\r\n :: smart-socket ::\t(" + config.VERSION + ")");
+            LOGGER.info(config.BANNER + "\r\n :: amq-socket ::\t(" + config.VERSION + ")");
         }
         start0(new Function<AsynchronousSocketChannel, AioPipe<T>>() {
             @Override
@@ -87,7 +87,7 @@ public class AioServer<T> implements Runnable{
 
                 @Override
                 public Thread newThread(Runnable r) {
-                    return new Thread(r, "smart-socket:AIO-" + (++index));
+                    return new Thread(r, "amq-socket:AIO-" + (++index));
                 }
             });
             this.serverSocketChannel = AsynchronousServerSocketChannel.open(asynchronousChannelGroup);
@@ -113,15 +113,15 @@ public class AioServer<T> implements Runnable{
 
                 @Override
                 public void failed(Throwable exc, AsynchronousServerSocketChannel serverSocketChannel) {
-                    LOGGER.error("smart-socket server accept fail", exc);
+                    LOGGER.error("amq-socket server accept fail", exc);
                 }
             });
         } catch (IOException e) {
             shutdown();
             throw e;
         }
-        LOGGER.info("smart-socket server started on port {}", config.getPort());
-        LOGGER.info("smart-socket server config is {}", config);
+        LOGGER.info("amq-socket server started on port {}", config.getPort());
+        LOGGER.info("amq-socket server config is {}", config);
     }
 
     /**

@@ -119,7 +119,12 @@ public class AioPipe<T> {
      */
     public final boolean write(T t) {
         try {
-            write(ioServerConfig.getProtocol().encode(t));
+            boolean succ = writeToQueue(ioServerConfig.getProtocol().encode(t));
+            if (succ) {
+                if (writeSemaphore.tryAcquire()) {
+                    writeToChannel();
+                 }
+            }
             return true;
         } catch (IOException e) {
             e.printStackTrace();
@@ -142,27 +147,24 @@ public class AioPipe<T> {
      * @param buffer
      * @throws IOException
      */
-    public final void write(final ByteBuffer buffer) throws IOException {
+    public final boolean writeToQueue(final ByteBuffer buffer) throws IOException {
         if (isInvalid()) {
             logger.error(" pipe({}) is " + (status == CLOSED ? "closed" : "invalid"), getRemoteAddress());
-            return;
+            return false;
         }
         if (!buffer.hasRemaining()) {
             logger.error("buffer has no remaining");
-            return;
+            return false;
         }
 
         // buffer 写入到队列缓存
-        writeSemaphore.release();
         int size = writeCacheQueue.put(buffer);
         if (size >= ioServerConfig.getFlowLimitLine() && ioServerConfig.isServer()) {
             flowControl = true;
             ioServerConfig.getProcessor().stateEvent(this, State.FLOW_LIMIT, null);
         }
+        return true;
 
-        if (writeSemaphore.tryAcquire()) {
-            writeToChannel();
-        }
     }
 
 
@@ -173,6 +175,18 @@ public class AioPipe<T> {
     void writeToChannel() {
         if (writeBuffer != null && writeBuffer.hasRemaining()) {
             continueWrite();
+        }
+
+        if (writeCacheQueue == null || writeCacheQueue.size() == 0) {
+            if (writeBuffer != null && writeBuffer.isDirect()) {
+                DirectBufferUtil.freeFirstBuffer(writeBuffer);
+            }
+            writeBuffer = null;
+            writeSemaphore.release();
+            //此时可能是Closing或Closed状态
+            if (isInvalid()) {
+                close();
+            }
             return;
         }
 
@@ -209,6 +223,7 @@ public class AioPipe<T> {
             try {
                 dataEntry = ioServerConfig.getProtocol().decode(readBuffer);
             } catch (Exception e) {
+                logger.error(e.getMessage(), e);
                 ioServerConfig.getProcessor().stateEvent(this, State.DECODE_EXCEPTION, e);
                 throw e;
             }
@@ -220,7 +235,9 @@ public class AioPipe<T> {
             try {
                 ioServerConfig.getProcessor().process(this, dataEntry);
             } catch (Exception e) {
+                logger.error(e.getMessage(), e);
                 ioServerConfig.getProcessor().stateEvent(this, State.PROCESS_EXCEPTION, e);
+                throw e;
             }
         }
 
@@ -281,17 +298,17 @@ public class AioPipe<T> {
             try {
                 channel.shutdownInput();
             } catch (IOException e) {
-                logger.debug(e.getMessage(), e);
+                logger.error(e.getMessage(), e);
             }
             try {
                 channel.shutdownOutput();
             } catch (IOException e) {
-                logger.debug(e.getMessage(), e);
+                logger.error(e.getMessage(), e);
             }
             try {
                 channel.close();
             } catch (IOException e) {
-                logger.debug("close pipe exception", e);
+                logger.error("close pipe exception", e);
             }
             try {
                 ioServerConfig.getProcessor().stateEvent(this, State.PIPE_CLOSED, null);
@@ -378,4 +395,6 @@ public class AioPipe<T> {
         this.attachment = attachment;
         return this;
     }
+
+
 }

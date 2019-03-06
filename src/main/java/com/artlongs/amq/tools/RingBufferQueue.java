@@ -104,7 +104,7 @@ public class RingBufferQueue<T> implements Iterable {
         final Iterator iter = iterator();
         while (iter.hasNext()) {
             Object o = iter.next();
-            if (o.equals(v)) {
+            if (o!=null && o.equals(v)) {
                 found = true;
                 oldIndex = _index;
                 break;
@@ -171,7 +171,7 @@ public class RingBufferQueue<T> implements Iterable {
                 if (index < size()) {
                     return items[index++];
                 }
-                throw new NoSuchElementException("No more elements in RingBufferQueue");
+                return null;
             }
         };
     }

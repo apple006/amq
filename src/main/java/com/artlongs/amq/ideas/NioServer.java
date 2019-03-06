@@ -1,4 +1,4 @@
-package com.artlongs.amq.server.idea;
+package com.artlongs.amq.ideas;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

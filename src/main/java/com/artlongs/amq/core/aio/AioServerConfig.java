@@ -12,12 +12,12 @@ import java.util.List;
 public class AioServerConfig<T> {
     private boolean isServer;
     public static final String BANNER = "\n" +
-            "                               _                           _             _   \n" +
-            "                              ( )_                        ( )           ( )_ \n" +
-            "  ___   ___ ___     _ _  _ __ | ,_)     ___    _      ___ | |/')    __  | ,_)\n" +
-            "/',__)/' _ ` _ `\\ /'_` )( '__)| |     /',__) /'_`\\  /'___)| , <   /'__`\\| |  \n" +
-            "\\__, \\| ( ) ( ) |( (_| || |   | |_    \\__, \\( (_) )( (___ | |\\`\\ (  ___/| |_ \n" +
-            "(____/(_) (_) (_)`\\__,_)(_)   `\\__)   (____/`\\___/'`\\____)(_) (_)`\\____)`\\__)";
+            "   _              ____ \n" +
+            "  /_\\    /\\/\\    /___ \\\n" +
+            " //_\\\\  /    \\  //  / /\n" +
+            "/  _  \\/ /\\/\\ \\/ \\_/ / \n" +
+            "\\_/ \\_/\\/    \\/\\___,_\\ \n" +
+            "                       ";
 
     public static final String VERSION = "v0.0.1";
 
@@ -33,7 +33,7 @@ public class AioServerConfig<T> {
 
 
     /**
-     * 消息队列缓存大小
+     * buffer队列缓存大小
      */
     private int queueSize = 512;
 
@@ -164,5 +164,22 @@ public class AioServerConfig<T> {
         this.socketOptions.add(option);
     }
 
-
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("AioServerConfig{");
+        sb.append("isServer=").append(isServer);
+        sb.append(", socketOptions=").append(socketOptions);
+        sb.append(", host='").append(host).append('\'');
+        sb.append(", port=").append(port);
+        sb.append(", queueSize=").append(queueSize);
+        sb.append(", dirctBufferSize=").append(dirctBufferSize);
+        sb.append(", threadNum=").append(threadNum);
+        sb.append(", limitRate=").append(limitRate);
+        sb.append(", releaseRate=").append(releaseRate);
+        sb.append(", flowLimitLine=").append(flowLimitLine);
+        sb.append(", releaseLine=").append(releaseLine);
+        sb.append(", bannerEnabled=").append(bannerEnabled);
+        sb.append('}');
+        return sb.toString();
+    }
 }
