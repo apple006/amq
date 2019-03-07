@@ -21,12 +21,12 @@ public class MqConfig {
 	//========================== MQ ITME =====================================
 	//读取数据的行等侍时长(秒)
 	public static int read_wait_timeout = 3;
-	// 客户端的连接线程池大小
+	// 客户端的连接线程池大小(2的倍数)
 	public static int client_connect_thread_pool_size =2000;
-	// 服务端的连接线程池大小
+	// 服务端的连接线程池大小(2的倍数)
 	public static int server_connect_thread_pool_size =2000;
-	// 工作线程池大小
-	public static int worker_thread_pool_size =2000;
+	// 工作线程池大小(2的倍数)
+	public static int worker_thread_pool_size =256;
 	// 工作线程最大时长(秒)
 	public static long worker_keepalive_second =30* 60;
 	// socket 连接超时(秒)

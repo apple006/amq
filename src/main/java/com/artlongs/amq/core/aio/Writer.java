@@ -21,9 +21,9 @@ public class Writer<T> implements CompletionHandler<Integer, AioPipe<T>> {
             if (monitor != null) {
                 monitor.write(pipe, result);
             }
-            pipe.writeSemaphore.release();
-            DirectBufferUtil.freeFirstBuffer(pipe.writeBuffer);
-            pipe.writeBuffer = null;
+            // 清理
+            pipe.clearWriteBufferAndUnLock();
+            // 继续写操作
             pipe.writeToChannel();
         } catch (Exception e) {
             failed(e, pipe);
@@ -32,9 +32,7 @@ public class Writer<T> implements CompletionHandler<Integer, AioPipe<T>> {
 
     @Override
     public void failed(Throwable exc, AioPipe<T> pipe) {
-        pipe.writeSemaphore.release();
-        DirectBufferUtil.freeFirstBuffer(pipe.writeBuffer);
-        pipe.writeBuffer = null;
+        pipe.clearWriteBufferAndUnLock();
 
         try {
             pipe.getServerConfig().getProcessor().stateEvent(pipe, State.OUTPUT_EXCEPTION, exc);
@@ -47,4 +45,6 @@ public class Writer<T> implements CompletionHandler<Integer, AioPipe<T>> {
             LOGGER.debug(e.getMessage(), e);
         }
     }
+
+
 }

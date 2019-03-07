@@ -6,9 +6,10 @@ import com.artlongs.amq.tools.RingBufferQueue;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.Objects;
 
 /**
- * Func :订阅
+ * Func :订阅(消息中收内部使用), Message 的简化版本
  *
  * @author: leeton on 2019/1/23.
  */
@@ -20,7 +21,7 @@ public class Subscribe implements Serializable {
     private AioPipe pipe;
     private Message.Life life;
     private Message.Listen listen;
-    private int idx; // 在队列里的 index
+    private int idx; // 在队列里的 index,记录下来,以加速remove
 
     public Subscribe(String id, String topic, AioPipe pipe, Message.Life life,Message.Listen listen) {
         this.id = id;
@@ -45,7 +46,21 @@ public class Subscribe implements Serializable {
         queue.remove(target.idx);
     }
 
-    //================================ 我的貂婵在那里 ================================================
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Subscribe subscribe = (Subscribe) o;
+        return Objects.equals(topic, subscribe.topic) &&
+                Objects.equals(pipe, subscribe.pipe);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(topic, pipe);
+    }
+
+//================================ 我的貂婵在那里 ================================================
 
 
     public String getId() {

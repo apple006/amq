@@ -18,7 +18,7 @@ public class TestSend {
 
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
         ExecutorService pool = Executors.newFixedThreadPool(MqConfig.client_connect_thread_pool_size);
-        AsynchronousChannelGroup asynchronousChannelGroup = AsynchronousChannelGroup.withFixedThreadPool(20, new ThreadFactory() {
+        AsynchronousChannelGroup asynchronousChannelGroup = AsynchronousChannelGroup.withFixedThreadPool(MqConfig.client_connect_thread_pool_size, new ThreadFactory() {
             @Override
             public Thread newThread(Runnable r) {
                 return new Thread(r);
@@ -32,10 +32,12 @@ public class TestSend {
         pool.submit(t);
         client.start();
 
-        for (int i = 0; i < 10; i++) {
+        long s = System.currentTimeMillis();
+        for (int i = 0; i < 10000; i++) {
             processor.onlyPublish("topic_hello", "hello linton,times:"+i);
-            Thread.sleep(0,50);
+            Thread.sleep(50);
         }
+        System.err.println("Time:"+(System.currentTimeMillis()-s)/1000);
 
     }
 

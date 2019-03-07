@@ -1,6 +1,5 @@
 package com.artlongs.amq.core.aio;
 
-import com.artlongs.amq.core.Message;
 import com.artlongs.amq.tools.RingBufferQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,16 +8,17 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
-import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 
 /**
- * Func :
- *
+ * Func : 对 Aio channel 的包装
+ * 不喜欢 session 这个单词,按 nProcess 项目把 channel 叫 pipe(通道),感觉更好理解
  * @author: leeton on 2019/2/22.
  */
 public class AioPipe<T> {
     private static final Logger logger = LoggerFactory.getLogger(AioPipe.class);
+
+    private Integer id;
     Semaphore writeSemaphore = new Semaphore(1);
     Semaphore readSemaphore = new Semaphore(1);
 
@@ -53,8 +53,7 @@ public class AioPipe<T> {
 
     protected byte status = ENABLED;
 
-    private Future<Message> backMessage;
-    /**
+     /**
      * 是否流控,客户端写流控，服务端读流控
      */
     private boolean flowControl;
@@ -80,6 +79,7 @@ public class AioPipe<T> {
         //触发状态机
         config.getProcessor().stateEvent(this, State.NEW_PIPE, null);
         this.readBuffer = DirectBufferUtil.allocateDirectBuffer(config.getDirctBufferSize());
+        this.id = getId();
     }
 
     /**
@@ -111,45 +111,35 @@ public class AioPipe<T> {
     }
 
     /**
-     * 输出消息。
+     * 输出数据。
      * <p>必须实现{@link Protocol#encode(Object)}</p>方法
      *
-     * @param t 待输出消息必须为当前服务指定的泛型
+     * @param t 待输出数据必须为当前服务指定的泛型
      * @throws IOException
      */
     public final boolean write(T t) {
         try {
-            boolean succ = writeToQueue(ioServerConfig.getProtocol().encode(t));
+            boolean succ = writeToCacheQueue(ioServerConfig.getProtocol().encode(t));
             if (succ) {
                 if (writeSemaphore.tryAcquire()) {
                     writeToChannel();
                  }
             }
-            return true;
-        } catch (IOException e) {
+            return succ;
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return false;
     }
 
     /**
-     * 将数据buffer输出至网络对端。
-     * <p>
-     * 若当前无待输出的数据，则立即输出buffer.
-     * </p>
-     * <p>
-     * 若当前存在待数据数据，且无可用缓冲队列(writeCacheQueue)，则阻塞。
-     * </p>
-     * <p>
-     * 若当前存在待输出数据，且缓冲队列存在可用空间，则将buffer存入writeCacheQueue。
-     * </p>
+     * 将数据写入缓冲队列。
      *
      * @param buffer
-     * @throws IOException
      */
-    public final boolean writeToQueue(final ByteBuffer buffer) throws IOException {
+    private final boolean writeToCacheQueue(final ByteBuffer buffer) {
         if (isInvalid()) {
-            logger.error(" pipe({}) is " + (status == CLOSED ? "closed" : "invalid"), getRemoteAddress());
+            logger.error(" pipe({}) is " + (status == CLOSED ? "closed" : "invalid"), getId());
             return false;
         }
         if (!buffer.hasRemaining()) {
@@ -164,13 +154,16 @@ public class AioPipe<T> {
             ioServerConfig.getProcessor().stateEvent(this, State.FLOW_LIMIT, null);
         }
         return true;
-
     }
 
 
     /**
-     * 触发AIO的写操作,
+     * 触发AIO的写操作,将数据 buffer 输出至网络对端。
+     *
      * <p>需要调用控制同步</p>
+     * <p>若当前 writeBuffer 存在数据，则立即输出buffer.</p>
+     * <p>若缓冲队列(writeCacheQueue)为空,说明数据已传输完毕,则清空 writeBuffer 并解锁</p>
+     * <p>如果存在流控并符合释放条件，则触发读操作</p>
      */
     void writeToChannel() {
         if (writeBuffer != null && writeBuffer.hasRemaining()) {
@@ -178,11 +171,7 @@ public class AioPipe<T> {
         }
 
         if (writeCacheQueue == null || writeCacheQueue.size() == 0) {
-            if (writeBuffer != null && writeBuffer.isDirect()) {
-                DirectBufferUtil.freeFirstBuffer(writeBuffer);
-            }
-            writeBuffer = null;
-            writeSemaphore.release();
+            clearWriteBufferAndUnLock();
             //此时可能是Closing或Closed状态
             if (isInvalid()) {
                 close();
@@ -207,6 +196,7 @@ public class AioPipe<T> {
 
     }
 
+
     /**
      * 触发通道的读操作，当发现存在严重消息积压时,会触发流控
      */
@@ -216,8 +206,6 @@ public class AioPipe<T> {
             return;
         }
         readBuffer.flip();
-
-
         while (readBuffer.hasRemaining()) {
             T dataEntry = null;
             try {
@@ -274,7 +262,7 @@ public class AioPipe<T> {
 
 
     /**
-     * 强制关闭当前AIOSession。
+     * 强制关闭当前AioPipe。
      * <p>若此时还存留待输出的数据，则会导致该部分数据丢失</p>
      */
     public final void close() {
@@ -359,9 +347,8 @@ public class AioPipe<T> {
         try {
             return (InetSocketAddress) channel.getRemoteAddress();
         } catch (IOException e) {
-            e.printStackTrace();
+            return null;
         }
-        return null;
     }
 
     private void assertChannel() throws IOException {
@@ -378,15 +365,6 @@ public class AioPipe<T> {
         return channel;
     }
 
-    public Future<Message> getBackMessage() {
-        return backMessage;
-    }
-
-    public AioPipe<T> setBackMessage(Future<Message> backMessage) {
-        this.backMessage = backMessage;
-        return this;
-    }
-
     public Object getAttachment() {
         return attachment;
     }
@@ -394,6 +372,17 @@ public class AioPipe<T> {
     public AioPipe<T> setAttachment(Object attachment) {
         this.attachment = attachment;
         return this;
+    }
+
+    /**
+     * 清空 WriteBuffer 并解锁
+     */
+    public void clearWriteBufferAndUnLock() {
+        if (this.writeBuffer != null && this.writeBuffer.isDirect()) {
+            DirectBufferUtil.freeFirstBuffer(writeBuffer);
+        }
+        this.writeBuffer = null;
+        this.writeSemaphore.release();
     }
 
 

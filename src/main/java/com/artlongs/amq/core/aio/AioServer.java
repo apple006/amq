@@ -37,7 +37,7 @@ public class AioServer<T> implements Runnable{
     private Function<AsynchronousSocketChannel, AioPipe<T>> aioPipeFunction;
 
     private AsynchronousServerSocketChannel serverSocketChannel = null;
-    private AsynchronousChannelGroup asynchronousChannelGroup;
+    private AsynchronousChannelGroup asynchronousChannelThreadPool;
 
     /**
      * 设置服务端启动必要参数配置
@@ -82,7 +82,7 @@ public class AioServer<T> implements Runnable{
     protected final void start0(Function<AsynchronousSocketChannel, AioPipe<T>> aioPipeFunction) throws IOException {
         try {
             this.aioPipeFunction = aioPipeFunction;
-            asynchronousChannelGroup = AsynchronousChannelGroup.withFixedThreadPool(config.getThreadNum(), new ThreadFactory() {
+            asynchronousChannelThreadPool = AsynchronousChannelGroup.withFixedThreadPool(config.getThreadNum(), new ThreadFactory() {
                 byte index = 0;
 
                 @Override
@@ -90,7 +90,7 @@ public class AioServer<T> implements Runnable{
                     return new Thread(r, "amq-socket:AIO-" + (++index));
                 }
             });
-            this.serverSocketChannel = AsynchronousServerSocketChannel.open(asynchronousChannelGroup);
+            this.serverSocketChannel = AsynchronousServerSocketChannel.open(asynchronousChannelThreadPool);
             //set socket options
             if (config.getSocketOptions() != null) {
                 for (SocketOption option :config.getSocketOptions()) {
@@ -108,7 +108,7 @@ public class AioServer<T> implements Runnable{
                 @Override
                 public void completed(final AsynchronousSocketChannel channel, AsynchronousServerSocketChannel serverSocketChannel) {
                     serverSocketChannel.accept(serverSocketChannel, this);
-                    createSession(channel);
+                    createPipe(channel);
                 }
 
                 @Override
@@ -125,11 +125,11 @@ public class AioServer<T> implements Runnable{
     }
 
     /**
-     * 为每个新建立的连接创建AIOSession对象
+     * 为每个新建立的连接创建 AioPipe 对象
      *
      * @param channel
      */
-    private void createSession(AsynchronousSocketChannel channel) {
+    private void createPipe(AsynchronousSocketChannel channel) {
         //连接成功则构造AIOSession对象
         AioPipe<T> session = null;
         try {
@@ -172,15 +172,15 @@ public class AioServer<T> implements Runnable{
         } catch (IOException e) {
             LOGGER.warn(e.getMessage(), e);
         }
-        if (!asynchronousChannelGroup.isTerminated()) {
+        if (!asynchronousChannelThreadPool.isTerminated()) {
             try {
-                asynchronousChannelGroup.shutdownNow();
+                asynchronousChannelThreadPool.shutdownNow();
             } catch (IOException e) {
                 LOGGER.error("shutdown exception", e);
             }
         }
         try {
-            asynchronousChannelGroup.awaitTermination(3, TimeUnit.SECONDS);
+            asynchronousChannelThreadPool.awaitTermination(3, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             LOGGER.error("shutdown exception", e);
         }

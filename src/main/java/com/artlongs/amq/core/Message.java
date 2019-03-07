@@ -150,7 +150,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     }
 
     private static <V> Message ofFinishJob(Key k, V v) {
-        return ofDef(k, v).setLife(Life.SPARK).setType(Type.FINISH_JOB);
+        return ofDef(k, v).setLife(Life.ALL_ACKED).setType(Type.FINISH_JOB);
     }
 
     // ======================================================= MESSAGE BUILD END =========================================
@@ -195,7 +195,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         }
     }
 
-    public int ackedSize() {
+    public int ackedSize() { //@see upStatOfACK
         if (null == this.getStat()) return 0;
         if (null == this.getStat().getNodesConfirmed()) return 0;
         return this.getStat().getNodesConfirmed().size();
@@ -500,7 +500,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
      */
     public enum SPREAD {
         TOPIC, // 普通的消息类型
-        DIRECT; // 直连类型,带 callback 效果
+        DIRECT; // 直连类型
     }
 
     /**
@@ -522,7 +522,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
      */
     public enum Listen {
         FUTURE_AND_ONCE, // 使用 FUTURE 机制,但只运行一次
-        CALLBACK; // 回调的模式
+        CALLBACK; // 回调的模式,可多次运行
     }
 
 

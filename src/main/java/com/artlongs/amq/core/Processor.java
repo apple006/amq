@@ -22,7 +22,7 @@ public interface Processor {
 
     FastList<Subscribe> subscribeOfDirect(String directTopic);
 
-    void sendMessageToSubcribe(List<Subscribe> subscribeList, Message message);
+    void sendMessageToSubcribe(Message message, List<Subscribe> subscribeList);
 
     Runnable delaySendOnScheduled();
 

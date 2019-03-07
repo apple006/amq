@@ -17,11 +17,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MqClientProcessor implements AioProcessor<Message>, MqClientAction {
 
     private AioPipe<Message> pipe;
-    private Map<String, Call> callBackMap = new ConcurrentHashMap<>();
+    private static Map<String, Call> callBackMap = new ConcurrentHashMap<>();
     /**
      * 客户端返回的消息包装
      */
-    public Map<String, CompletableFuture<Message>> futureResultMap = new ConcurrentHashMap<>();
+    private static Map<String, CompletableFuture<Message>> futureResultMap = new ConcurrentHashMap<>();
 
     @Override
     public void process(AioPipe<Message> pipe, Message msg) {
@@ -29,7 +29,6 @@ public class MqClientProcessor implements AioProcessor<Message>, MqClientAction 
         String subscribeId = msg.getSubscribeId();
         if(C.notEmpty(callBackMap) && null != callBackMap.get(subscribeId)){
             callBackMap.get(subscribeId).back(msg);
-            removeCallbackMap(subscribeId);
         }
         if(C.notEmpty(futureResultMap) && null != futureResultMap.get(subscribeId)){
             futureResultMap.get(subscribeId).complete(msg);
