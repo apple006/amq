@@ -14,15 +14,15 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
     private static final Logger LOGGER = LoggerFactory.getLogger(Reader.class);
 
     @Override
-    public void completed(final Integer result, final AioPipe<T> aioPipe) {
+    public void completed(final Integer size, final AioPipe<T> aioPipe) {
         try {
             // 记录流量
-            Monitor<T> monitor = aioPipe.getServerConfig().getMonitor();
+            Monitor<T> monitor = aioPipe.getServerConfig().getProcessor().getMonitor();
             if (monitor != null) {
-                monitor.read(aioPipe, result);
+                monitor.read(aioPipe, size);
             }
             aioPipe.readSemaphore.release();
-            aioPipe.readFromChannel(result == -1);
+            aioPipe.readFromChannel(size == -1);
         } catch (Exception e) {
             failed(e, aioPipe);
         }

@@ -10,7 +10,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadFactory;
 
 /**
- * Func :
+ * Func : Aio 客户端
  *
  * @author: leeton on 2019/2/22.
  */
@@ -151,6 +151,11 @@ public class AioClient<T> implements Runnable {
      */
     public final <V> AioClient<T> setOption(SocketOption socketOption) {
         config.setSocketOptions(socketOption);
+        return this;
+    }
+
+    public final AioClient<T> addPlugin(Plugin plugin) {
+        config.getProcessor().addPlugin(plugin);
         return this;
     }
 

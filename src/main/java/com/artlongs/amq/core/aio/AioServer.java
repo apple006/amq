@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 /**
- * Func :
+ * Func : Aio 服务端
  *
  * @author: leeton on 2019/2/22.
  */
@@ -239,6 +239,11 @@ public class AioServer<T> implements Runnable{
      */
     public final <V> AioServer<T> setOption(SocketOption options) {
         config.setSocketOptions(options);
+        return this;
+    }
+
+    public final AioServer<T> addPlugin(Plugin plugin) {
+        config.getProcessor().addPlugin(plugin);
         return this;
     }
 

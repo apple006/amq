@@ -49,7 +49,7 @@ public class FastJsonSerializer implements ISerializer {
 
     public static void main(String[] args) {
         User user = new User(1, "alice");
-        Message<Message.Key,User> msgEntity = Message.ofDef(new Message.Key("id","quene",Message.SPREAD.TOPIC),user);
+        Message<Message.Key,User> msgEntity = Message.ofDef(new Message.Key("id","quene"),user);
         byte[] bytes = new FastJsonSerializer().toByte(msgEntity);
         Message entity =  new FastJsonSerializer().getObj(ByteBuffer.wrap(bytes));
         System.out.println("entity = [" + entity + "]");

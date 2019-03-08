@@ -16,22 +16,14 @@ import java.util.List;
  */
 public class BizEventHandler implements WorkHandler<JobEvent> {
     private static Logger logger = LoggerFactory.getLogger(BizEventHandler.class);
+
     @Override
     public void onEvent(JobEvent event) throws Exception {
         Message message = event.getMessage();
-        logger.debug(" 执行业务消息的匹配与发送 ......");
+        logger.debug("[S]执行业务消息的匹配与发送 ......");
         String topic = message.getK().getTopic();
-        switch (message.getK().getSpread()) {
-            case TOPIC:
-                List<Subscribe> subscribeList = ProcessorImpl.INST.subscribeOfTopic(topic);
-                ProcessorImpl.INST.sendMessageToSubcribe(message,subscribeList);
-                break;
-
-            case DIRECT:
-                List<Subscribe> directList = ProcessorImpl.INST.subscribeOfDirect(topic);
-                ProcessorImpl.INST.sendMessageToSubcribe(message,directList);
-                break;
-        }
+        List<Subscribe> subscribeList = ProcessorImpl.INST.subscribeOfTopic(topic);
+        ProcessorImpl.INST.sendMessageToSubcribe(message, subscribeList);
     }
 
 }

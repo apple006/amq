@@ -15,7 +15,7 @@ public class JobEvnetHandler implements EventHandler<JobEvent> {
 
     @Override
     public void onEvent(JobEvent event, long sequence, boolean endOfBatch) throws Exception {
-        logger.debug(" 执行消息任务的分派 ......");
+        logger.debug("[S]执行消息任务的分派 ......");
         ProcessorImpl.INST.publishJobToWorker(event.getMessage());
     }
 }

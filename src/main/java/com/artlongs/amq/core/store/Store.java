@@ -104,7 +104,7 @@ public enum Store {
 
 
     public static void main(String[] args) {
-        Message msg = Message.ofDef(new Message.Key(ID.ONLY.id(), "quene", Message.SPREAD.TOPIC), "hello,world!");
+        Message msg = Message.ofDef(new Message.Key(ID.ONLY.id(), "quene"), "hello,world!");
         Store.INST.save("hello", msg);
         System.err.println(Store.INST.get("hello"));
 

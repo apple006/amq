@@ -62,7 +62,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         m.life = life;
         m.setType(Type.ACK);
         m.acked = true;
-        m.k.spread = null;
         m.k.sendNode = null;
         m.k.recNode = null;
         m.k.topic = null;
@@ -72,32 +71,32 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     }
 
     // ======================================================= MESSAGE BUILD BEGIN ======================================
-    public static <V> Message buildCommonMessage(String topic, V data, Integer sendNode, Message.SPREAD spread) {
-        Message.Key mKey = key(topic, sendNode, Message.SPREAD.TOPIC);
+    public static <V> Message buildCommonMessage(String topic, V data, Integer sendNode) {
+        Message.Key mKey = key(topic, sendNode);
         return Message.ofDef(mKey, data);
     }
 
     public static <V> Message buildSubscribe(String topic, V v, Integer sendNode, Message.Life life, Message.Listen listen) {
-        Message.Key mKey = key(topic, sendNode, Message.SPREAD.TOPIC);
+        Message.Key mKey = key(topic, sendNode);
         Message message = Message.ofSubscribe(mKey, v, life, listen);
         return message;
     }
 
     public static <V> Message buildPublishJob(String topic, V v, Integer sendNode) {
-        Message.Key mKey = key(topic, sendNode, Message.SPREAD.TOPIC);
+        Message.Key mKey = key(topic, sendNode);
         Message message = Message.ofPublicJob(mKey, v);
         return message;
     }
 
     public static <V> Message buildAcceptJob(String topic, Integer sendNode) {
-        Message.Key mKey = key(topic, sendNode, Message.SPREAD.TOPIC);
+        Message.Key mKey = key(topic, sendNode);
         Message message = Message.ofAcceptJob(mKey);
         return message;
     }
 
     public static <V> Message buildFinishJob(String jobId, String topic, V v, Integer sendNode) {
         String jobTopic = buildFinishJobTopic(jobId, topic);
-        Message.Key mKey = key(jobTopic, sendNode, Message.SPREAD.TOPIC);
+        Message.Key mKey = key(jobTopic, sendNode);
         Message message = Message.ofFinishJob(mKey, v);
         return message;
     }
@@ -107,25 +106,11 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         return message;
     }
 
-    public static Message.Key key(String topic, Integer sendNode, Message.SPREAD spread) {
-        Message.Key mKey = new Message.Key(ID.ONLY.id(), topic, spread);
+    public static Message.Key key(String topic, Integer sendNode) {
+        Message.Key mKey = new Message.Key(ID.ONLY.id(), topic);
         mKey.setSendNode(sendNode);
         return mKey;
     }
-
-    /**
-     * 接收任务执行结果的订阅
-     * @param providerMsgId
-     * @param providerMsg
-     * @return
-     */
-    public static Message buildJobResultListen(String providerMsgId, String providerTopic) {
-        String callBackTopic = buildFinishJobTopic(providerMsgId ,providerTopic);
-        Message.Key mKey = new Message.Key(ID.ONLY.id(), callBackTopic, Message.SPREAD.TOPIC);
-        Message jobCallBack = Message.ofSubscribe(mKey, null, Life.SPARK, Listen.FUTURE_AND_ONCE);
-        return jobCallBack;
-    }
-
 
     /**
      * 任务结果的TOPIC
@@ -311,20 +296,17 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
         private String id;
         private String topic;
-        private SPREAD spread;
         private Integer recNode;   //接收者 (pipeId)
         private Integer sendNode;  //发布者 (pipeId)
 
-        public Key(String id, String topic, SPREAD spread) {
+        public Key(String id, String topic) {
             this.id = id;
             this.topic = topic;
-            this.spread = spread;
         }
 
-        public Key(String id, String topic, SPREAD spread, Integer recNode, Integer sendNode) {
+        public Key(String id, String topic, Integer recNode, Integer sendNode) {
             this.id = id;
             this.topic = topic;
-            this.spread = spread;
             this.recNode = recNode;
             this.sendNode = sendNode;
         }
@@ -355,10 +337,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             return topic;
         }
 
-        public SPREAD getSpread() {
-            return spread;
-        }
-
         public Integer getRecNode() {
             return recNode;
         }
@@ -376,12 +354,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             this.topic = topic;
             return this;
         }
-
-        public Key setSpread(SPREAD spread) {
-            this.spread = spread;
-            return this;
-        }
-
         public Key setRecNode(Integer recNode) {
             this.recNode = recNode;
             return this;
@@ -496,14 +468,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     }
 
     /**
-     * SPREAD
-     */
-    public enum SPREAD {
-        TOPIC, // 普通的消息类型
-        DIRECT; // 直连类型
-    }
-
-    /**
      * 消息类型
      */
     public enum Type {
@@ -527,7 +491,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
 
     public static void main(String[] args) {
-        Message msg = new Message().ofDef(new Key(ID.ONLY.id(), "quene", SPREAD.TOPIC), "hello");
+        Message msg = new Message().ofDef(new Key(ID.ONLY.id(), "quene"), "hello");
         System.err.println("msg=" + msg);
     }
 

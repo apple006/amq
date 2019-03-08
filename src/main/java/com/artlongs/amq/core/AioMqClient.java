@@ -4,7 +4,6 @@ import com.artlongs.amq.core.aio.AioClient;
 import com.artlongs.amq.core.aio.AioPipe;
 import com.artlongs.amq.core.aio.AioProcessor;
 import com.artlongs.amq.core.aio.Protocol;
-import com.artlongs.amq.serializer.ISerializer;
 
 import java.io.IOException;
 import java.nio.channels.AsynchronousChannelGroup;
@@ -16,7 +15,6 @@ import java.util.concurrent.ExecutionException;
  * @author: leeton on 2019/2/25.
  */
 public class AioMqClient<T> extends AioClient<T> {
-    private static ISerializer serializer = ISerializer.Serializer.INST.of();
 
     private AioPipe aioPipe;
 

@@ -1,6 +1,7 @@
 package com.artlongs.amq.core;
 
 import com.artlongs.amq.core.aio.AioServer;
+import com.artlongs.amq.core.aio.plugin.MonitorPlugin;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -17,9 +18,12 @@ public class AioMqServer {
         ExecutorService pool = Executors.newFixedThreadPool(MqConfig.server_connect_thread_pool_size);
 
         AioServer<Message> aioServer = new AioServer<>(MqConfig.host, MqConfig.port, new MqProtocol(), new MqServerProcessor());
+        aioServer.addPlugin(new MonitorPlugin());
+
         Thread t = new Thread(aioServer);
         t.setDaemon(true);
         pool.submit(t);
+
         aioServer.start();
 
     }

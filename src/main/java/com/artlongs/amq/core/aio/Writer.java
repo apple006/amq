@@ -14,12 +14,12 @@ public class Writer<T> implements CompletionHandler<Integer, AioPipe<T>> {
     private static final Logger LOGGER = LoggerFactory.getLogger(Writer.class);
 
     @Override
-    public void completed(Integer result, AioPipe<T> pipe) {
+    public void completed(Integer size, AioPipe<T> pipe) {
         try {
             // 接收到的消息进行预处理
-            Monitor<T> monitor = pipe.getServerConfig().getMonitor();
+            Monitor monitor = pipe.getServerConfig().getProcessor().getMonitor();
             if (monitor != null) {
-                monitor.write(pipe, result);
+                monitor.write(pipe, size);
             }
             // 清理
             pipe.clearWriteBufferAndUnLock();

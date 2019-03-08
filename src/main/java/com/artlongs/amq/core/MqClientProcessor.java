@@ -1,7 +1,7 @@
 package com.artlongs.amq.core;
 
+import com.artlongs.amq.core.aio.AioBaseProcessor;
 import com.artlongs.amq.core.aio.AioPipe;
-import com.artlongs.amq.core.aio.AioProcessor;
 import com.artlongs.amq.core.aio.State;
 import org.osgl.util.C;
 
@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @author: leeton on 2019/2/25.
  */
-public class MqClientProcessor implements AioProcessor<Message>, MqClientAction {
+public class MqClientProcessor extends AioBaseProcessor<Message> implements MqClientAction {
 
     private AioPipe<Message> pipe;
     private static Map<String, Call> callBackMap = new ConcurrentHashMap<>();
@@ -24,7 +24,7 @@ public class MqClientProcessor implements AioProcessor<Message>, MqClientAction 
     private static Map<String, CompletableFuture<Message>> futureResultMap = new ConcurrentHashMap<>();
 
     @Override
-    public void process(AioPipe<Message> pipe, Message msg) {
+    public void process0(AioPipe<Message> pipe, Message msg) {
         System.err.println(" Client,收到消息: ");
         String subscribeId = msg.getSubscribeId();
         if(C.notEmpty(callBackMap) && null != callBackMap.get(subscribeId)){
@@ -86,7 +86,7 @@ public class MqClientProcessor implements AioProcessor<Message>, MqClientAction 
     @Override
     public <M> boolean onlyPublish(String topic, M data) {
         try {
-            this.pipe.write(Message.buildCommonMessage(topic, data, getNode(), Message.SPREAD.TOPIC));
+            this.pipe.write(Message.buildCommonMessage(topic, data, getNode()));
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -106,7 +106,7 @@ public class MqClientProcessor implements AioProcessor<Message>, MqClientAction 
     }
 
      @Override
-    public void stateEvent(AioPipe<Message> pipe, State state, Throwable throwable) {
+    public void stateEvent0(AioPipe<Message> pipe, State state, Throwable throwable) {
         switch (state) {
             case NEW_PIPE:
                 this.pipe = pipe;

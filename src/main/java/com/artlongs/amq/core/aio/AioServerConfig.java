@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Func :
+ * Func : AIO 配置项
  *
  * @author: leeton on 2019/2/22.
  */
@@ -26,11 +26,8 @@ public class AioServerConfig<T> {
     public String host ;
     public int port;
 
-    public static List<Plugin> plugins = Plugin.plugins;
     private AioProcessor<T> processor;
     private Protocol<T> protocol;
-    private Monitor monitor;
-
 
     /**
      * buffer队列缓存大小
@@ -79,9 +76,6 @@ public class AioServerConfig<T> {
 
     public final void setProcessor(AioProcessor<T> processor) {
         this.processor = processor;
-        if (processor instanceof Monitor) {
-            this.monitor = (Monitor<T>) processor;
-        }
     }
 
     public int getQueueSize() {
@@ -110,10 +104,6 @@ public class AioServerConfig<T> {
 
     public boolean isServer() {
         return isServer;
-    }
-
-    public Monitor getMonitor() {
-        return monitor;
     }
 
     public String getHost() {
