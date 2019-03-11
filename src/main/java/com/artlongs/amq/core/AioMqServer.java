@@ -19,6 +19,7 @@ public class AioMqServer {
 
         AioServer<Message> aioServer = new AioServer<>(MqConfig.host, MqConfig.port, new MqProtocol(), new MqServerProcessor());
         aioServer.addPlugin(new MonitorPlugin());
+        aioServer.setCheckAlive(true);
 
         Thread t = new Thread(aioServer);
         t.setDaemon(true);

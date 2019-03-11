@@ -64,7 +64,7 @@ public enum ProcessorImpl implements Processor {
     private WorkerPool<JobEvent> persistent_worker_pool = null;
 
     // scheduled to resend message
-    final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+    final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(3);
 
     public ProcessorImpl me() {
         return this;
@@ -79,11 +79,13 @@ public enum ProcessorImpl implements Processor {
             this.persistent_worker_pool = createWorkerPool(new StoreEventHandler());
             this.persistent_worker = persistent_worker_pool.start(poolExecutor);
         }
+        // 计时任务
         final ScheduledFuture<?> delaySend = scheduler.scheduleWithFixedDelay(
                 delaySendOnScheduled(), 5, MqConfig.msg_not_acked_resend_period, SECONDS);
-
         final ScheduledFuture<?> retrySend = scheduler.scheduleWithFixedDelay(
                 retrySendOnScheduled(), 5, MqConfig.msg_falt_message_resend_period, SECONDS);
+        final ScheduledFuture<?> checkAlive = scheduler.scheduleWithFixedDelay(
+                checkAliveScheduled(), 1, MqConfig.msg_default_alive_tims, SECONDS);
     }
 
     /**
@@ -124,7 +126,7 @@ public enum ProcessorImpl implements Processor {
     public void onMessage(AioPipe pipe, Message message) {
         if (null != message) {
             String msgId = message.getK().getId();
-            if (message.isAcked()) { // ACK 消息
+            if (message.isAckedMsg()) { // ACK 消息
                 if (Message.Life.SPARK == message.getLife()) {
                     removeSubscribeCacheOnAck(msgId);
                     removeDbDataOfDone(msgId);
@@ -133,7 +135,7 @@ public enum ProcessorImpl implements Processor {
                     upStatOfACK(clientNode, message);
                 }
             } else {
-                if (message.isSubscribe() || Message.Type.SUBSCRIBE == message.getType()) { // subscribe msg
+                if (message.isSubscribe()) { // subscribe msg
                     addSubscribeIF(pipe, message);
                     if (isAcceptJob(message)) { // 如果工作任务已经先一步发布了,则触发-->直接把任务发给订阅者
                         triggerDirectSendJobToAcceptor(pipe, message);
@@ -351,7 +353,7 @@ public enum ProcessorImpl implements Processor {
             public void run() {
                 for (Message message : cache_all_message.values()) {
                     if (MqConfig.msg_not_acked_resend_max_times > message.getStat().getDelay()) {
-                        System.out.println("The scheduler task is running delay-send message !");
+                        logger.warn("The scheduler task is running delay-send message !");
                         message.incrDelay();
                         pulishJobEvent(message);
                     }
@@ -374,9 +376,33 @@ public enum ProcessorImpl implements Processor {
             public void run() {
                 for (Message message : cache_falt_message.values()) {
                     if (MqConfig.msg_falt_message_resend_max_times > message.getStat().getRetry()) {
-                        System.out.println("The scheduler task is running retry-send message !");
+                        logger.warn("The scheduler task is running retry-send message !");
                         message.incrRetry();
                         pulishJobEvent(message);
+                    }
+                }
+            }
+        };
+        return retry;
+    }
+
+    /**
+     * 删除过期的消息
+     * @return
+     */
+    public Runnable checkAliveScheduled() {
+        final Runnable retry = new Runnable() {
+            @Override
+            public void run() {
+                for (Message message : cache_all_message.values()) {
+                    long cTime = message.getStat().getCtime();
+                    long now = System.currentTimeMillis();
+                    long ttl = message.getStat().getTtl();
+                    if((now - cTime >= ttl) && Message.Life.FOREVER != message.getLife()){
+                        String id = message.getK().getId();
+                        logger.warn("The scheduler task is running remove message({}) on TTL.",id);
+                        removeDbDataOfDone(id);
+                        removeCacheOfDone(id);
                     }
                 }
             }

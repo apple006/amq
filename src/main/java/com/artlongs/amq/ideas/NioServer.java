@@ -1,5 +1,7 @@
 package com.artlongs.amq.ideas;
 
+import com.artlongs.amq.core.MqConfig;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -54,7 +56,12 @@ public class NioServer {
                     SocketChannel channel = server.accept();
                     channel.configureBlocking(false);
                     //向客户端发消息
-                    channel.write(ByteBuffer.wrap(new String("send message to client").getBytes()));
+//                    channel.write(ByteBuffer.wrap(new String("send message to client").getBytes()));
+                    ByteBuffer buffer = ByteBuffer.allocate(1);
+                    buffer.position(0);
+                    buffer.limit(0);
+
+                    channel.write(buffer);
                     //在与客户端连接成功后，为客户端通道注册SelectionKey.OP_READ事件。
                     channel.register(selector, SelectionKey.OP_READ);
 
@@ -64,6 +71,7 @@ public class NioServer {
                     SocketChannel channel = (SocketChannel)key.channel();
                     //创建读取数据缓冲器
                     ByteBuffer buffer = ByteBuffer.allocate(10);
+
                     int read = channel.read(buffer);
                     byte[] data = buffer.array();
                     String message = new String(data);
@@ -77,6 +85,6 @@ public class NioServer {
     }
 
     public static void main(String[] args) throws IOException {
-        new NioServer().init(9981).listen();
+        new NioServer().init(MqConfig.port).listen();
     }
 }

@@ -1,5 +1,7 @@
 package com.artlongs.amq.core.aio;
 
+import com.artlongs.amq.core.MqConfig;
+import com.artlongs.amq.core.aio.plugin.HeartPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +12,7 @@ import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -40,6 +43,13 @@ public class AioServer<T> implements Runnable{
     private AsynchronousChannelGroup asynchronousChannelThreadPool;
 
     /**
+     * 客户端存活列表,ConcurrentHashMap[PipeID,AioPipe]
+     */
+    private ConcurrentHashMap<Integer, AioPipe> channelAliveMap = new ConcurrentHashMap<>(MqConfig.client_connect_thread_pool_size);
+
+    private boolean checkAlive = false;
+
+    /**
      * 设置服务端启动必要参数配置
      *
      * @param port             绑定服务端口号
@@ -51,6 +61,9 @@ public class AioServer<T> implements Runnable{
         config.setPort(port);
         config.setProtocol(protocol);
         config.setProcessor(messageProcessor);
+        if(checkAlive){//运行检测心跳
+            new HeartPlugin(this.channelAliveMap).run();
+        }
     }
 
     @Override
@@ -129,15 +142,18 @@ public class AioServer<T> implements Runnable{
      *
      * @param channel
      */
-    private void createPipe(AsynchronousSocketChannel channel) {
+    private AioPipe createPipe(AsynchronousSocketChannel channel) {
         //连接成功则构造AIOSession对象
-        AioPipe<T> session = null;
+        AioPipe<T> pipe = null;
         try {
-            session = aioPipeFunction.apply(channel);
-            session.initSession();
+            pipe = aioPipeFunction.apply(channel);
+            pipe.initSession();
+            if (null != pipe) {
+                channelAliveMap.put(pipe.getId(),pipe);
+            }
         } catch (Exception e1) {
             LOGGER.debug(e1.getMessage(), e1);
-            if (session == null) {
+            if (pipe == null) {
                 try {
                     channel.shutdownInput();
                 } catch (IOException e) {
@@ -154,10 +170,11 @@ public class AioServer<T> implements Runnable{
                     LOGGER.debug("close channel exception", e);
                 }
             } else {
-                session.close();
+                pipe.close();
             }
 
         }
+        return pipe;
     }
 
     /**
@@ -247,5 +264,12 @@ public class AioServer<T> implements Runnable{
         return this;
     }
 
+    public AioServer<T> setCheckAlive(boolean checkAlive) {
+        this.checkAlive = checkAlive;
+        return this;
+    }
 
+    public ConcurrentHashMap<Integer, AioPipe> getChannelAliveMap() {
+        return channelAliveMap;
+    }
 }

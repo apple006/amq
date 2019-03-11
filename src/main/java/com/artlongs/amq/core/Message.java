@@ -26,7 +26,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     private Life life;
     private Listen listen;
     private Type type;
-    private boolean acked;
 
     ////=============================================
     public static <V> Message ofDef(Key k, V v) {
@@ -40,14 +39,12 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
                 .setMtime(now)
                 .setDelay(0)
                 .setRetry(0);
-
         m.stat = stat;
         return m;
     }
 
     public static Message empty() {
-        Message m = new Message();
-        return m;
+        return new Message();
     }
 
     /**
@@ -61,13 +58,23 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         m.k.id = msgId;
         m.life = life;
         m.setType(Type.ACK);
-        m.acked = true;
         m.k.sendNode = null;
         m.k.recNode = null;
         m.k.topic = null;
         m.stat = null;
         m.v = null;
         return m;
+    }
+
+    /**
+     * 创建 MESSAGE ID 格式: xx(2位客户机编号)_yyyyMMddHHmmssSSS"(17) + (2位)原子顺序数累加
+     *
+     * @param clientId
+     * @return
+     */
+    public static String createId(String clientId) {
+        String id = clientId + ID.ONLY.id();
+        return id;
     }
 
     // ======================================================= MESSAGE BUILD BEGIN ======================================
@@ -107,15 +114,16 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     }
 
     public static Message.Key key(String topic, Integer sendNode) {
-        Message.Key mKey = new Message.Key(ID.ONLY.id(), topic);
+        Message.Key mKey = new Message.Key(createId(""), topic);
         mKey.setSendNode(sendNode);
         return mKey;
     }
 
     /**
      * 任务结果的TOPIC
+     *
      * @param providerMsgId 实际上是任务发布者的 MsgId
-     * @param oldTopic 原来的 TOPIC
+     * @param oldTopic      原来的 TOPIC
      * @return
      */
     public static String buildFinishJobTopic(String providerMsgId, String oldTopic) {
@@ -186,6 +194,13 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         return this.getStat().getNodesConfirmed().size();
     }
 
+    public boolean isAckedMsg() {
+        return Type.ACK.equals(this.type);
+    }
+
+    public Boolean isSubscribe() {
+        return (null != subscribeId) || (Message.Type.SUBSCRIBE == this.getType());
+    }
 
     ////=============================================
 
@@ -229,10 +244,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         return this;
     }
 
-    public Boolean isSubscribe() {
-        return (null != subscribeId);
-    }
-
     public Message<K, V> setSubscribeId(String subscribeId) {
         this.subscribeId = subscribeId;
         return this;
@@ -248,15 +259,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
     public Message<K, V> setLife(Life life) {
         this.life = life;
-        return this;
-    }
-
-    public boolean isAcked() {
-        return acked;
-    }
-
-    public Message<K, V> setAcked(boolean acked) {
-        this.acked = acked;
         return this;
     }
 
@@ -285,9 +287,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
 //====================================    Message Key   ====================================
 
-    /**
-     * Message Key
-     */
     public static class Key implements Serializable {
         private static final long serialVersionUID = 1L;
 
@@ -309,22 +308,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             this.topic = topic;
             this.recNode = recNode;
             this.sendNode = sendNode;
-        }
-
-        /**
-         * 创建 MESSAGE ID 格式: xx(2位客户机编号,16进制)_yyyyMMddHHmmssSSS"(17) + (2位)原子顺序数累加
-         *
-         * @param clientId
-         * @return
-         */
-        public String createId(String clientId) {
-            String id = clientId + ID.ONLY.id();
-            setId(id);
-            return id;
-        }
-
-        public boolean isSelf(String sendNode) {
-            return this.getSendNode().equals(sendNode);
         }
 
         //==============================================================
@@ -354,6 +337,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             this.topic = topic;
             return this;
         }
+
         public Key setRecNode(Integer recNode) {
             this.recNode = recNode;
             return this;
@@ -374,7 +358,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     public static class Stat {
         private static final long serialVersionUID = 1L;
         private ON on;
-        private Long ttl;   // Time To Live, 消息的存活时间,如果未成功发送,则最多存活一天
+        private Long ttl = MqConfig.msg_default_alive_tims;   // Time To Live, 消息的存活时间,如果未成功发送,则最多存活一天
         private Long ctime; // create time
         private Long mtime; // modify time
         private int delay;  // 延迟发送(消息未ACKED)
@@ -464,7 +448,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
      * Message status
      */
     public enum ON {
-        QUENED, SENDING, SENDONFAIL, SENED, ACKED, DONE;
+        QUENED, SENDING, SENDONFAIL, SENED, ACKED;
     }
 
     /**
@@ -478,7 +462,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
      * 消息的生命周期
      */
     public enum Life {
-        ALL_ACKED, SPARK;
+        FOREVER,ALL_ACKED, SPARK;
     }
 
     /**
@@ -491,7 +475,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
 
     public static void main(String[] args) {
-        Message msg = new Message().ofDef(new Key(ID.ONLY.id(), "quene"), "hello");
+        Message msg = new Message().ofDef(new Key(createId(""), "quene"), "hello");
         System.err.println("msg=" + msg);
     }
 
