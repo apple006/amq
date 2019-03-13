@@ -13,7 +13,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 /**
- * Router
+ * Router 路由集合
  * <p>
  * An object that routes incoming HTTP requests to an appropriate route for response.
  * <p>
@@ -61,12 +61,10 @@ public class Router implements HttpHandler {
      * @return a new {@code Router}
      */
     public static Router asRouter(Controller... controllers) {
-        if (controllers == null)
-            throw new IllegalArgumentException();
+        if (controllers == null) throw new IllegalArgumentException();
         Router router = new Router();
         for (Controller controller : controllers){
             Router.addRoutes(controller.getClass(), controller, router);
-
         }
         return router;
     }
@@ -139,13 +137,6 @@ public class Router implements HttpHandler {
                     path = post.value();
                     patterns = post.patterns();
                     indexes = post.indexes();
-                    methodParams = Arrays.asList(method.getParameters());
-                } else if (method.isAnnotationPresent(Delete.class)) {
-                    Delete delete = method.getAnnotation(Delete.class);
-                    requestType = HttpRequest.METHOD_DELETE;
-                    path = delete.value();
-                    patterns = delete.patterns();
-                    indexes = delete.indexes();
                     methodParams = Arrays.asList(method.getParameters());
                 } else {
                     return;
@@ -247,7 +238,12 @@ public class Router implements HttpHandler {
             throw new RuntimeException("Unable to find route. Request type: " + requestType + ", uri: " + uri);
         List<Route> routes = this.routes.get(requestType);
         for (Route route : routes) {
-            if (route.matches(uri)) return route;
+            if (route.matches(uri)){
+                return route;
+            }else {
+                return new Route(requestType,"/404");
+            }
+
         }
 
         logger.error("Unable to find route. Request type: " + requestType + ", uri: " + uri);
@@ -261,10 +257,23 @@ public class Router implements HttpHandler {
         if(null == req || null == res) return;
         try {
             Object o = find(req.method(), req.uri());
-            if (null != o) o =((Route)o).invoke(req);
-            if (o instanceof HttpHandler){
-                ((HttpHandler) o).handle(req, res);
+            if(!((Route) o).path().endsWith("404")){
+                if (null != o) o =((Route)o).invoke(req);
+                if (o instanceof HttpHandler){
+                    ((HttpHandler) o).handle(req, res);
+                }
+            }else {// 404
+                HttpHandler e404 = new HttpHandler() {
+                    @Override
+                    public void handle(HttpRequest req, HttpResponse resp) {
+                        resp.setState(404);
+                        resp.append("<h2>Page Not Found. (404)</h2>");
+                        resp.end();
+                    }
+                };
+                e404.handle(req, res);
             }
+
         } catch (InvocationTargetException | IllegalAccessException e) {
            // throw new RuntimeException("Unable to invoke route action.", e);
             logger.error("Unable to invoke route action.", e);

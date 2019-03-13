@@ -1,5 +1,6 @@
 package com.artlongs.amq.http;
 
+import com.artlongs.amq.http.aio.handler.SocketWriteHandler;
 import com.artlongs.amq.http.routes.Controller;
 
 /**
@@ -24,8 +25,8 @@ public interface HttpServer extends Runnable {
 
 	HttpServer addController(Controller... controller);
 
-	void writer(Write writer);
-	Write getWriter();
+	void writer(SocketWriteHandler writer);
+	SocketWriteHandler getWriter();
 
 	void setDaemon(Runnable runnable);
 

@@ -1,11 +1,11 @@
 package com.artlongs.amq.http.nio;
 
-import com.artlongs.amq.http.routes.Controller;
-import com.artlongs.amq.http.Write;
 import com.artlongs.amq.http.HttpHandler;
 import com.artlongs.amq.http.HttpServer;
 import com.artlongs.amq.http.HttpServerConfig;
 import com.artlongs.amq.http.HttpServerState;
+import com.artlongs.amq.http.aio.handler.SocketWriteHandler;
+import com.artlongs.amq.http.routes.Controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,12 +134,12 @@ public class NioHttpServer implements HttpServer {
     }
 
     @Override
-    public void writer(Write writer) {
+    public void writer(SocketWriteHandler writer) {
 
     }
 
     @Override
-    public Write getWriter() {
+    public SocketWriteHandler getWriter() {
         return null;
     }
 

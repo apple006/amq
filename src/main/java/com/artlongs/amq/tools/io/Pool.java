@@ -43,4 +43,12 @@ public interface Pool<T> {
             return Buffers.globalPooledWrapper(ByteBufferPool.SMALL_DIRECT.allocate());
         }
     };
+
+    default Pool<ByteBuffer> create(int size,boolean isDirect) {
+       return new Pool<ByteBuffer>() {
+            public Pooled<ByteBuffer> allocate() {
+                return Buffers.globalPooledWrapper(ByteBufferPool.create(size,isDirect).allocate());
+            }
+        };
+    }
 }

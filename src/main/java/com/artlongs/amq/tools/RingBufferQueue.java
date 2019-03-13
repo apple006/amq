@@ -163,7 +163,10 @@ public class RingBufferQueue<T> implements Iterable {
 
             @Override
             public boolean hasNext() { // 因为是队列,为 true 时,值也可能为 null , 这里只是判断是否存在这个 box
-                return index < size();
+                if(realSize>0){
+                    return index < size();
+                }
+                return false;
             }
 
             @Override

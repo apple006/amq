@@ -17,26 +17,15 @@ public class FastJsonSerializer implements ISerializer {
     }
 
     public Message getObj(byte[] bytes) {
-        return JSON.parseObject(bytes,Message.class);
+        return JSON.parseObject(bytes, Message.class);
     }
 
 
     @Override
     public Message getObj(ByteBuffer byteBuffer) {
-        byteBuffer.rewind(); // 重置 position,有可能 buffer 在之前已经被读取过
-        final int remaining = byteBuffer.remaining();
-        if (remaining > 0) {
-            byte[] bytes = new byte[remaining];
-            if (byteBuffer.isDirect()) {
-                bytes = Buffers.take(byteBuffer);
-            }else {
-                bytes = byteBuffer.array();
-            }
-            Message obj = JSON.parseObject(bytes,Message.class);
-            return obj;
-        }
-        return Message.empty();
-
+        byte[] bytes = Buffers.take(byteBuffer, false);
+        Message obj = JSON.parseObject(bytes, Message.class);
+        return obj != null ? obj : Message.empty();
     }
 
 
@@ -46,16 +35,16 @@ public class FastJsonSerializer implements ISerializer {
         return obj;
     }
 
-
     public static void main(String[] args) {
         User user = new User(1, "alice");
-        Message<Message.Key,User> msgEntity = Message.ofDef(new Message.Key("id","quene"),user);
+        Message<Message.Key, User> msgEntity = Message.ofDef(new Message.Key("id", "quene"), user);
         byte[] bytes = new FastJsonSerializer().toByte(msgEntity);
-        Message entity =  new FastJsonSerializer().getObj(ByteBuffer.wrap(bytes));
+        Message entity = new FastJsonSerializer().getObj(ByteBuffer.wrap(bytes));
         System.out.println("entity = [" + entity + "]");
 
     }
-    public static class User{
+
+    public static class User {
         private Integer id;
         private String name;
 

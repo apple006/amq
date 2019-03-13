@@ -33,22 +33,22 @@ public enum ProcessorImpl implements Processor {
     /**
      * 从客户端读取到的数据缓存 map(messageId,Message)
      */
-    public static ConcurrentSkipListMap<String, Message> cache_all_message = new ConcurrentSkipListMap();
+    private ConcurrentSkipListMap<String, Message> cache_all_message = new ConcurrentSkipListMap();
 
     /**
      * 发送失败的消息数据缓存 map(messageId,Message)
      */
-    public static ConcurrentSkipListMap<String, Message> cache_falt_message = new ConcurrentSkipListMap();
-    public static ConcurrentSkipListMap<String, Message> cache_public_job = new ConcurrentSkipListMap();
-    public static ConcurrentSkipListMap<String, Message> cache_accept_job = new ConcurrentSkipListMap();
+    private ConcurrentSkipListMap<String, Message> cache_falt_message = new ConcurrentSkipListMap();
+    private ConcurrentSkipListMap<String, Message> cache_public_job = new ConcurrentSkipListMap();
+    private ConcurrentSkipListMap<String, Message> cache_accept_job = new ConcurrentSkipListMap();
 
     /**
      * 客户端订阅的主题 RingBufferQueue(Subscribe)
      */
-    public static RingBufferQueue<Subscribe> subscribe_cache = new RingBufferQueue<>(MqConfig.mq_cache_map_sizes);
+    private RingBufferQueue<Subscribe> cache_subscribe = new RingBufferQueue<>(MqConfig.mq_cache_map_sizes);
 
     // ringBuffer cap setting
-    private static final int WORKER_BUFFER_SIZE = 1024 * 32;
+    private final int WORKER_BUFFER_SIZE = 1024 * 32;
 
     //创建消息多线程任务分发器 ringBuffer
     private final RingBuffer<JobEvent> job_ringbuffer;
@@ -86,6 +86,7 @@ public enum ProcessorImpl implements Processor {
                 retrySendOnScheduled(), 5, MqConfig.msg_falt_message_resend_period, SECONDS);
         final ScheduledFuture<?> checkAlive = scheduler.scheduleWithFixedDelay(
                 checkAliveScheduled(), 1, MqConfig.msg_default_alive_tims, SECONDS);
+
     }
 
     /**
@@ -107,7 +108,7 @@ public enum ProcessorImpl implements Processor {
     }
 
     /**
-     * 创建工作线程沲
+     * 创建工作线程池
      *
      * @param workHandler 事件处理器
      * @return
@@ -214,7 +215,7 @@ public enum ProcessorImpl implements Processor {
         if (message.isSubscribe()) {
             String clientKey = message.getK().getId();
             Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), pipe, message.getLife(), message.getListen());
-            RingBufferQueue.Result result = subscribe_cache.putIfAbsent(listen);
+            RingBufferQueue.Result result = cache_subscribe.putIfAbsent(listen);
             listen.setIdx(result.index);
             return true;
         }
@@ -232,7 +233,7 @@ public enum ProcessorImpl implements Processor {
         String jobId = message.getK().getId();
         String jobTopc = Message.buildFinishJobTopic(jobId, message.getK().getTopic());
         Subscribe subscribe = new Subscribe(jobId, jobTopc, pipe, message.getLife(), message.getListen());
-        RingBufferQueue.Result result = subscribe_cache.putIfAbsent(subscribe);
+        RingBufferQueue.Result result = cache_subscribe.putIfAbsent(subscribe);
         subscribe.setIdx(result.index);
         return true;
     }
@@ -246,7 +247,7 @@ public enum ProcessorImpl implements Processor {
      */
     public FastList<Subscribe> subscribeOfTopic(String topic) {
         FastList<Subscribe> list = new FastList<>(Subscribe.class);
-        Iterator<Subscribe> subscribes = subscribe_cache.iterator();
+        Iterator<Subscribe> subscribes = cache_subscribe.iterator();
         while (subscribes.hasNext()) {
             Subscribe listen = subscribes.next();
             if (null != listen && listen.getTopic().startsWith(topic)) {
@@ -264,7 +265,7 @@ public enum ProcessorImpl implements Processor {
      */
     public FastList<Subscribe> subscribeOfDirect(String directTopic) {
         FastList<Subscribe> list = new FastList<>(Subscribe.class);
-        Iterator<Subscribe> subscribes = subscribe_cache.iterator();
+        Iterator<Subscribe> subscribes = cache_subscribe.iterator();
         while (subscribes.hasNext()) {
             Subscribe listen = subscribes.next();
             if (null != listen && listen.getTopic().startsWith(directTopic)) {
@@ -331,7 +332,7 @@ public enum ProcessorImpl implements Processor {
     private boolean isPipeClosedThenRemove(Subscribe subscribe) {
         try {
             if (subscribe.getPipe().isInvalid()) {
-                subscribe_cache.remove(subscribe.getIdx());
+                cache_subscribe.remove(subscribe.getIdx());
                 logger.warn("remove subscribe on pipe ({}) is CLOSED.", subscribe.getPipe().getId());
                 return true;
             }
@@ -370,7 +371,6 @@ public enum ProcessorImpl implements Processor {
      */
     @Override
     public Runnable retrySendOnScheduled() {
-
         final Runnable retry = new Runnable() {
             @Override
             public void run() {
@@ -485,11 +485,11 @@ public enum ProcessorImpl implements Processor {
     }
 
     private void removeSubscribeCacheOnAck(String ackId) {
-        Iterator<Subscribe> iter = subscribe_cache.iterator();
+        Iterator<Subscribe> iter = cache_subscribe.iterator();
         while (iter.hasNext()) {
             Subscribe subscribe = iter.next();
             if (subscribe != null && ackId.equals(subscribe.getId())) {
-                subscribe_cache.remove(subscribe.getIdx());
+                cache_subscribe.remove(subscribe.getIdx());
                 break;
             }
         }
@@ -497,7 +497,7 @@ public enum ProcessorImpl implements Processor {
 
     private void removeSubscribeOfCache(Subscribe subscribe) {
         try {
-            subscribe_cache.remove(subscribe.getIdx());
+            cache_subscribe.remove(subscribe.getIdx());
         } catch (Exception e) {
             logger.error(" remove subscribe-cache element exception.");
         }
@@ -535,5 +535,23 @@ public enum ProcessorImpl implements Processor {
         return null;
     }
 
+    public ConcurrentSkipListMap<String, Message> getCache_all_message() {
+        return cache_all_message;
+    }
 
+    public ConcurrentSkipListMap<String, Message> getCache_falt_message() {
+        return cache_falt_message;
+    }
+
+    public ConcurrentSkipListMap<String, Message> getCache_public_job() {
+        return cache_public_job;
+    }
+
+    public ConcurrentSkipListMap<String, Message> getCache_accept_job() {
+        return cache_accept_job;
+    }
+
+    public RingBufferQueue<Subscribe> getCache_subscribe() {
+        return cache_subscribe;
+    }
 }

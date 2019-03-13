@@ -16,14 +16,11 @@ public class HttpServerConfig {
 	 * 创建一个全局的 ByteBuffer Pool
 	 */
 	public static final Pool<ByteBuffer> bufferPool= Pool.MEDIUM_DIRECT;
-	public enum IO{
-		nio,aio;
-	}
+
 	public static Charset charsets = StandardCharsets.UTF_8;
-	public static IO io = IO.aio;
 	public static int port = 8080;
 	public static String ip = "0.0.0.0";
-	public static int maxConnection = 300000;
+	public static int maxConnection = 1000;
 	public static int maxConcurrent = 1000;
 	public static int readWait = 3;
 	public static int requestWait = 300;

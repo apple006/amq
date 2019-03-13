@@ -22,6 +22,7 @@ public class IOUtils {
     public static void print(ByteBuffer buf){
         if (null != buf && buf.remaining() >0) {
             buf.flip();
+            buf.get();
             logger.info("[REC]:"+new StringBuilder(StandardCharsets.UTF_8.decode(buf)).toString());
         }
     }

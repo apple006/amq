@@ -976,6 +976,28 @@ public final class Buffers {
         return bytes;
     }
 
+    public static byte[] take(ByteBuffer buffer,boolean copy) {
+        buffer.rewind();
+        final int remaining = buffer.remaining();
+        if (remaining == 0) return NO_BYTES;
+        if (buffer.hasArray()) { // Heap buffer
+            if (copy) {
+                final int pos = buffer.position();
+                final int lim = buffer.limit();
+                final byte[] array = buffer.array();
+                final int offset = buffer.arrayOffset();
+                buffer.position(lim);
+                return Arrays.copyOfRange(array, offset + pos, offset + lim);
+            }else {
+                return buffer.array();
+            }
+        }
+        // Direct buffer
+        final byte[] bytes = new byte[remaining];
+        buffer.get(bytes);
+        return bytes;
+    }
+
     /**
      * Take all of the remaining bytes from the buffers and return them in an array.
      *

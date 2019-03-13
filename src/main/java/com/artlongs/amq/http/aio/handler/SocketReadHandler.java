@@ -1,57 +1,64 @@
 package com.artlongs.amq.http.aio.handler;
 
 import com.artlongs.amq.http.aio.AioHttpServer;
-import com.artlongs.amq.http.HttpServerConfig;
+import com.artlongs.amq.http.HttpResolver;
 import com.artlongs.amq.http.HttpServerState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
-import java.util.concurrent.TimeUnit;
 
 /**
 *@author leeton
 *2018年2月6日
 *
 */
-public class SocketReadHandler implements CompletionHandler<AsynchronousSocketChannel,Void>,Cloneable {
+public class SocketReadHandler implements CompletionHandler<Integer, ByteBuffer>,Cloneable {
+
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
-	private AsynchronousServerSocketChannel serverSocket = null;
-	private AioHttpServer httpServer = null;
-	private HttpServerState state = null;
-	private HttpServerConfig config = null;
+	private HttpResolver resolver = null;
+	private AsynchronousSocketChannel client = null;
+	private AioHttpServer server = null;
+	public static HttpServerState state = null;
 
-	public SocketReadHandler(AioHttpServer httpServer) {
-		this.serverSocket = httpServer.getServerSocket();
-		this.httpServer = httpServer;
+	public SocketReadHandler(AioHttpServer httpServer, AsynchronousSocketChannel client, ByteBuffer buffer) {
+		this.client = client;
+		this.server = httpServer;
+		httpServer.writer(new SocketWriteHandler(client, buffer));
+		resolver = new HttpResolver(httpServer);
 		state = httpServer.getState();
-		config = httpServer.getConfig();
 	}
+
 	@Override
-	public void completed(AsynchronousSocketChannel client, Void attachment) {
-		int n = HttpServerState.CONCURRENT_NUMS.getAndIncrement();
-
-//		ByteBuffer byteBuf = ByteBuffer.allocate(256);// 内部堆 heap buffer
-		ByteBuffer byteBuf = HttpServerConfig.bufferPool.allocate().getResource(); // 分配外部 direct buffer
-		client.read(byteBuf, config.readWait, TimeUnit.SECONDS, byteBuf, new SocketWriteHandler(httpServer,client));
-
-		while(n >= config.maxConnection) {
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-			n = HttpServerState.CONCURRENT_NUMS.decrementAndGet();
+	public void completed(Integer result, ByteBuffer attachment) {
+		if(result == -1) {
+			closeConn();
+			return;
 		}
-		serverSocket.accept(attachment, this);
+        resolver.excute(attachment);
 	}
 	@Override
-	public void failed(Throwable e, Void attachment) {
-		e.printStackTrace();
+	public void failed(Throwable ex, ByteBuffer attachment) {
+		logger.debug("write failed,maybe resource not exist. exception msg:{}",attachment.toString());
+		closeConn();
 	}
-	
+
+	private void closeConn() {
+		try {
+			HttpServerState.CONNECTION_NUMS.decrementAndGet();
+			resolver = null;
+			if(null != this.client && this.client.isOpen()) {
+                logger.debug("close socket:{}",client.getRemoteAddress().toString());
+				this.client.close();
+			}
+		} catch (IOException e) {
+			logger.error("close client happen exception", e);
+		}
+	}
+
+
 
 }

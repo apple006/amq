@@ -1,6 +1,7 @@
-package com.artlongs.amq.demo;
+package com.artlongs.amq.tester;
 
 import com.artlongs.amq.core.*;
+import com.artlongs.amq.serializer.FastJsonSerializer;
 
 import java.io.IOException;
 import java.nio.channels.AsynchronousChannelGroup;
@@ -12,13 +13,12 @@ import java.util.concurrent.ThreadFactory;
 /**
  * Func :
  *
- * @author: leeton on 2019/2/25.
+ * @author: leeton on 2019/3/1.
  */
-public class TestSend {
-
+public class TestPong {
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
         ExecutorService pool = Executors.newFixedThreadPool(MqConfig.client_connect_thread_pool_size);
-        AsynchronousChannelGroup asynchronousChannelGroup = AsynchronousChannelGroup.withFixedThreadPool(MqConfig.client_connect_thread_pool_size, new ThreadFactory() {
+        AsynchronousChannelGroup asynchronousChannelGroup = AsynchronousChannelGroup.withFixedThreadPool(20, new ThreadFactory() {
             @Override
             public Thread newThread(Runnable r) {
                 return new Thread(r);
@@ -26,19 +26,29 @@ public class TestSend {
         });
         MqClientProcessor processor = new MqClientProcessor();
         AioMqClient<Message> client = new AioMqClient(MqConfig.host, MqConfig.port, new MqProtocol(), processor);
-        client.start(asynchronousChannelGroup);
         Thread t = new Thread(client);
         t.setDaemon(true);
         pool.submit(t);
-        client.start();
+        client.start(asynchronousChannelGroup);
+        //
 
-        long s = System.currentTimeMillis();
-        for (int i = 0; i < 10000; i++) {
-            processor.onlyPublish("topic_hello", "hello linton,times:"+i);
-            Thread.sleep(50);
-        }
-        System.err.println("Time:"+(System.currentTimeMillis()-s)/1000);
+        FastJsonSerializer.User user = new FastJsonSerializer.User(2, "alice");
+        String jobTopc = "topic_get_userById";
+        processor.acceptJob(jobTopc, (m)->{
+            if (m != null) {
+                Message job = (Message)m; // 收到的 JOB
+                System.err.println(job);
+                // 完成任务 JOB
+                if (user.getId().equals(job.getV())) {
+                    processor.<FastJsonSerializer.User>finishJob(jobTopc, user,job);
+                }
+            }
+        });
+
+
+
 
     }
+
 
 }

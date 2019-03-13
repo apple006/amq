@@ -64,7 +64,7 @@ public abstract class ByteBufferPool {
      */
     public static final int MEDIUM_SIZE = 0x2000;
     /**
-     * The size of small buffers.
+     * The size (64) of small buffers.
      */
     public static final int SMALL_SIZE = 0x40;
 

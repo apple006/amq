@@ -1,15 +1,14 @@
 package com.artlongs.amq.http.aio;
 
 
-import com.artlongs.amq.disruptor.BusySpinWaitStrategy;
-import com.artlongs.amq.disruptor.RingBuffer;
-import com.artlongs.amq.disruptor.dsl.Disruptor;
-import com.artlongs.amq.disruptor.dsl.ProducerType;
-import com.artlongs.amq.http.*;
+import com.artlongs.amq.http.HttpHandler;
+import com.artlongs.amq.http.HttpServer;
+import com.artlongs.amq.http.HttpServerConfig;
+import com.artlongs.amq.http.HttpServerState;
+import com.artlongs.amq.http.aio.handler.SocketAcceptHandler;
+import com.artlongs.amq.http.aio.handler.SocketWriteHandler;
 import com.artlongs.amq.http.routes.Controller;
 import com.artlongs.amq.http.routes.Router;
-import com.artlongs.amq.http.Write;
-import com.artlongs.amq.http.aio.handler.SocketReadHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +19,6 @@ import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 
 /**
 *@author leeton
@@ -34,8 +32,7 @@ public class AioHttpServer implements HttpServer {
 	private HttpHandler handler = null;
 	private HttpServerState state = null;
 	private Router router;
-	private Write writer;
-	public  RingBuffer<HttpEventHandler> ringBuffer;
+	private SocketWriteHandler writer;
 
 	public AioHttpServer(HttpServerConfig config) {
 		this.config = config;
@@ -60,32 +57,13 @@ public class AioHttpServer implements HttpServer {
 			AsynchronousChannelGroup group = AsynchronousChannelGroup.withThreadPool(threadPool);
 			serverSocket = AsynchronousServerSocketChannel.open(group);
 			serverSocket.bind(new InetSocketAddress(config.ip, config.port));
-			serverSocket.accept(null, new SocketReadHandler(this));
+			serverSocket.accept(null, new SocketAcceptHandler(this));
 			setDaemon(this);
-
-			this.ringBuffer = buildRingBuffer(); //创建 RingBuffer
 
 		} catch (IOException e) {
 			throw new RuntimeException(" http start on Error:" + e);
 		}
 		LOGGER.warn("AMQ-HTTP had started,listening {}:{}",config.ip,config.port);
-	}
-
-	/**
-	 * 创建 RingBuffer
-	 * @return
-	 */
-	public RingBuffer<HttpEventHandler> buildRingBuffer(){
-		ThreadFactory threadFactory = Executors.defaultThreadFactory();
-		// Specify the size of the ring buffer, must be power of 2.
-		int bufferSize = 1024 * 128;
-
-		HttpEventHandler httpEvent  = new HttpEventHandler();
-		// Construct the Disruptor
-		Disruptor<HttpEventHandler> disruptor = new Disruptor<>(httpEvent, bufferSize, threadFactory,ProducerType.SINGLE,new BusySpinWaitStrategy());
-		// Connect the handler
-		disruptor.handleEventsWith(httpEvent);
-		return disruptor.start();
 	}
 
 
@@ -128,13 +106,13 @@ public class AioHttpServer implements HttpServer {
 	}
 
 	@Override
-	public void writer(Write writer) {
+	public void writer(SocketWriteHandler writer) {
 		this.writer = writer;
 
 	}
 
 	@Override
-	public Write getWriter() {
+	public SocketWriteHandler getWriter() {
 		return writer;
 	}
 

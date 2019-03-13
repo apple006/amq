@@ -1,7 +1,6 @@
-package com.artlongs.amq.demo;
+package com.artlongs.amq.tester;
 
 import com.artlongs.amq.core.*;
-import com.artlongs.amq.serializer.FastJsonSerializer;
 
 import java.io.IOException;
 import java.nio.channels.AsynchronousChannelGroup;
@@ -15,7 +14,8 @@ import java.util.concurrent.ThreadFactory;
  *
  * @author: leeton on 2019/3/1.
  */
-public class TestPong {
+public class TestPing {
+
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
         ExecutorService pool = Executors.newFixedThreadPool(MqConfig.client_connect_thread_pool_size);
         AsynchronousChannelGroup asynchronousChannelGroup = AsynchronousChannelGroup.withFixedThreadPool(20, new ThreadFactory() {
@@ -32,23 +32,13 @@ public class TestPong {
         client.start(asynchronousChannelGroup);
         //
 
-        FastJsonSerializer.User user = new FastJsonSerializer.User(2, "alice");
-        String jobTopc = "topic_get_userById";
-        processor.acceptJob(jobTopc, (m)->{
-            if (m != null) {
-                Message job = (Message)m; // 收到的 JOB
-                System.err.println(job);
-                // 完成任务 JOB
-                if (user.getId().equals(job.getV())) {
-                    processor.<FastJsonSerializer.User>finishJob(jobTopc, user,job);
-                }
-            }
-        });
+        Message message = processor.publishJob("topic_get_userById",2);
+        System.err.println(message);
+
 
 
 
 
     }
-
 
 }

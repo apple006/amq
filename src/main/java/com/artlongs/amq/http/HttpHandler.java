@@ -6,5 +6,5 @@ package com.artlongs.amq.http;
 *
 */
 public interface HttpHandler {
-	void handle(HttpRequest req, HttpResponse res) ;
+	void handle(HttpRequest req, HttpResponse resp) ;
 }
