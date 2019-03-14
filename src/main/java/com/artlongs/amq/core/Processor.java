@@ -12,15 +12,16 @@ import java.util.List;
  */
 public interface Processor {
 
+    /**
+     * 收到消息的逻辑处理
+     * @param pipe
+     * @param message
+     */
     void onMessage(AioPipe<Message> pipe, Message message);
-
-    Message getMessage(String msgId);
 
     void publishJobToWorker(Message message);
 
-    FastList<Subscribe> subscribeOfTopic(String topic);
-
-    FastList<Subscribe> subscribeOfDirect(String directTopic);
+    FastList<Subscribe> subscribeMatchOfTopic(String topic);
 
     void sendMessageToSubcribe(Message message, List<Subscribe> subscribeList);
 

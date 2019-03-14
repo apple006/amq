@@ -1,7 +1,8 @@
 package com.artlongs.amq.http;
 
 import com.artlongs.amq.core.Message;
-import com.artlongs.amq.core.ProcessorImpl;
+import com.artlongs.amq.core.store.IStore;
+import com.artlongs.amq.core.store.Store;
 import com.artlongs.amq.http.aio.AioHttpServer;
 import com.artlongs.amq.http.routes.Controller;
 import com.artlongs.amq.http.routes.Get;
@@ -53,7 +54,7 @@ public class App extends Thread {
             @Get("/amq/topic")
             public Render index() {
                 C.Map params = C.Map().readOnly(false);
-                Collection<Message> messageList = ProcessorImpl.INST.getCache_all_message().values();
+                Collection<Message> messageList = Store.INST.<Message>getAll(IStore.mq_all_data,Message.class);
     /*            while (iterator.hasNext()) {
                     Subscribe subscribe = iterator.next();
                     if (subscribe != null) {
@@ -61,7 +62,7 @@ public class App extends Thread {
                     }
                 }*/
                 for (Message message : messageList) {
-                    params.put(message.getK().getId(), message.getK().getTopic());
+                    params.put(message.getK().getId(), message);
                 }
 
                 return Render.json(params);

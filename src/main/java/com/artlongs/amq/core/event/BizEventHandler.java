@@ -22,7 +22,7 @@ public class BizEventHandler implements WorkHandler<JobEvent> {
         Message message = event.getMessage();
         logger.debug("[S]执行业务消息的匹配与发送 ......");
         String topic = message.getK().getTopic();
-        List<Subscribe> subscribeList = ProcessorImpl.INST.subscribeOfTopic(topic);
+        List<Subscribe> subscribeList = ProcessorImpl.INST.subscribeMatchOfTopic(topic);
         ProcessorImpl.INST.sendMessageToSubcribe(message, subscribeList);
     }
 

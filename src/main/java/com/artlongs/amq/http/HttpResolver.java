@@ -55,6 +55,7 @@ public class HttpResolver {
 			}finally {
 				// free buffer
 				HttpServerConfig.bufferPool.allocate().free();
+				data.clear();
 			}
 //			logger.debug("handle finished the request from {},uri={},req={},socket={}",client.getRemoteAddress(),req.uri,req.hashCode(),client.hashCode());
 		}

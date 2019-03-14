@@ -59,7 +59,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         m.life = life;
         m.setType(Type.ACK);
         m.k.sendNode = null;
-        m.k.recNode = null;
         m.k.topic = null;
         m.stat = null;
         m.v = null;
@@ -135,10 +134,11 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     }
 
     private static <V> Message ofPublicJob(Key k, V v) {
+        //注意这里不生成普通的订阅.MQ 中心里会手动生成一个特殊的订阅
         return ofDef(k, v).setLife(Life.ALL_ACKED).setListen(Listen.FUTURE_AND_ONCE).setType(Type.PUBLISH_JOB);
     }
 
-    private static <V> Message ofAcceptJob(Key k) {
+    private static <V> Message ofAcceptJob(Key k) {//实际上是一个订阅类别的消息
         return ofSubscribe(k, null, Life.ALL_ACKED, Listen.CALLBACK).setType(Type.ACCEPT_JOB);
     }
 
@@ -194,11 +194,11 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         return this.getStat().getNodesConfirmed().size();
     }
 
-    public boolean isAckedMsg() {
+    public boolean ackMsgTF() {
         return Type.ACK.equals(this.type);
     }
 
-    public Boolean isSubscribe() {
+    public Boolean subscribeTF() {
         return (null != subscribeId) || (Message.Type.SUBSCRIBE == this.getType());
     }
 
@@ -295,7 +295,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
         private String id;
         private String topic;
-        private Integer recNode;   //接收者 (pipeId)
         private Integer sendNode;  //发布者 (pipeId)
 
         public Key(String id, String topic) {
@@ -303,10 +302,9 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             this.topic = topic;
         }
 
-        public Key(String id, String topic, Integer recNode, Integer sendNode) {
+        public Key(String id, String topic, Integer sendNode) {
             this.id = id;
             this.topic = topic;
-            this.recNode = recNode;
             this.sendNode = sendNode;
         }
 
@@ -320,10 +318,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             return topic;
         }
 
-        public Integer getRecNode() {
-            return recNode;
-        }
-
         public Integer getSendNode() {
             return sendNode;
         }
@@ -335,11 +329,6 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
         public Key setTopic(String topic) {
             this.topic = topic;
-            return this;
-        }
-
-        public Key setRecNode(Integer recNode) {
-            this.recNode = recNode;
             return this;
         }
 

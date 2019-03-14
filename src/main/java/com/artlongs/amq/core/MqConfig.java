@@ -26,12 +26,13 @@ public class MqConfig {
 	// 服务端的连接线程池大小(2的倍数)
 	public static int server_connect_thread_pool_size =2000;
 	// 工作线程池大小(2的倍数)
-	public static int worker_thread_pool_size =256;
+	public static int worker_thread_pool_size =128;
 	// 工作线程最大时长(秒)
 	public static long worker_keepalive_second =30* 60;
 	// socket 连接超时(秒)
 	public static int connect_timeout = 3;
 	public static int clinet_send_max = 30;
+
 	// 间隔x秒,重发消息如果消息没有确认收到
 	public static int msg_not_acked_resend_period = 10;
 	// 消息未确认的消息重发的最大次数
@@ -48,7 +49,7 @@ public class MqConfig {
 	public static boolean mq_auto_acked = true;
 
 	// 保存所有的消息(持久化)
-	public static boolean store_all_message_to_db = false;
+	public static boolean store_all_message_to_db = true;
 	//  消息的默认存活时间(秒)
 	public static long msg_default_alive_tims = 86400;
 

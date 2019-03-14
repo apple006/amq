@@ -2,6 +2,7 @@ package com.artlongs.amq.core.store;
 
 import com.artlongs.amq.core.Message;
 import com.artlongs.amq.core.MqConfig;
+import com.artlongs.amq.core.Subscribe;
 import com.artlongs.amq.serializer.FastJsonSerializer;
 import com.artlongs.amq.tools.ID;
 import org.mapdb.BTreeMap;
@@ -9,104 +10,126 @@ import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
 import org.mapdb.serializer.GroupSerializer;
+import org.osgl.util.C;
+import org.osgl.util.S;
 
-import java.util.Map;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 
 /**
  * Func :
  *
  * @author: leeton on 2019/2/18.
  */
-public enum Store {
+public enum Store implements IStore {
     INST;
-
-    // MQ 收到的所有数据
-    private BTreeMap<String, byte[]> all_data = map("mq_all_data.db", Serializer.BYTE_ARRAY);
-    // MQ 数据的创建时间
-    private BTreeMap<String, Long> time = map("mq_time.db", Serializer.LONG);
-    // 需要重发的 MQ 数据
-    private BTreeMap<String, byte[]> need_retry = map("mq_need_retry.db", Serializer.BYTE_ARRAY);
-
     private FastJsonSerializer serializer = new FastJsonSerializer();
 
-    private DB markDb(String dbName) {
-        DB db = DBMaker.fileDB(MqConfig.mapdb_file_path + dbName)
+    private HashMap<String, DB> db = new HashMap<>();
+    // MQ 收到的所有数据
+    private BTreeMap<String, byte[]> all_data = markMap(IStore.mq_all_data, Serializer.BYTE_ARRAY);
+    // 需要重发的 MQ 数据
+    private BTreeMap<String, byte[]> need_retry = markMap(IStore.mq_need_retry, Serializer.BYTE_ARRAY);
+    private BTreeMap<String, byte[]> mq_subscribe = markMap(IStore.mq_subscribe, Serializer.BYTE_ARRAY);
+    private BTreeMap<String, byte[]> mq_common_publish = markMap(IStore.mq_common_publish, Serializer.BYTE_ARRAY);
+
+    private final static String DEF_TREEMAP_NAME = "ampdata";
+
+    @Override
+    public DB markDb(String dbName) {
+        DB _db = DBMaker.fileDB(MqConfig.mapdb_file_path + dbName)
                 .fileMmapEnableIfSupported()
                 .fileMmapPreclearDisable()
                 .allocateIncrement(1024)
+                .cleanerHackEnable()
                 .closeOnJvmShutdown()
                 .transactionEnable()
-                .cleanerHackEnable()
+                .concurrencyScale(128)
                 .make();
 
-        return db;
+        db.put(dbName, _db);
+        return _db;
     }
 
-    private BTreeMap map(String dbName, GroupSerializer seriaType) {
-        BTreeMap<String, byte[]> myMap = markDb(dbName).treeMap("mqdata")
+    @Override
+    public BTreeMap markMap(String dbName, GroupSerializer seriaType) {
+        BTreeMap<String, byte[]> myMap = markDb(dbName).treeMap(DEF_TREEMAP_NAME)
                 .keySerializer(Serializer.STRING)
                 .valueSerializer(seriaType)
+                .valuesOutsideNodesEnable()
                 .createOrOpen();
 
         return myMap;
     }
 
-    public boolean save(String key, Message message) {
-        Store.INST.all_data.put(key, serializer.toByte(message));
+    @Override
+    public BTreeMap getMapBy(String dbName) {
+        BTreeMap map = getDB(dbName).treeMap(DEF_TREEMAP_NAME).open();
+        return map;
+    }
+
+    private DB getDB(String dbName){
+        return db.get(dbName);
+    }
+
+
+    @Override
+    public <T> boolean save(String dbName, String key, T obj) {
+        if(S.empty(dbName)) return false;
+        if(S.empty(key)) return false;
+        getMapBy(dbName).putIfAbsent(key, serializer.toByte(obj));
+        getDB(dbName).commit();
         return true;
     }
 
-    public Message get(String key) {
-        return serializer.getObj(Store.INST.all_data.get(key));
+    @Override
+    public <T> T get(String dbName, String key,Class<?> tClass) {
+        byte[] bytes = (byte[]) getMapBy(dbName).get(key);
+        if (bytes != null) {
+            T obj = serializer.getObj(bytes,tClass);
+            return obj;
+        }
+        return null;
     }
 
-    public void remove(String key) {
-        Store.INST.all_data.remove(key);
+    @Override
+    public <T> List<T> getAll(String dbName,Class<?> tClass) {
+        List<T> list = C.newList();
+        for (Object o : getMapBy(dbName).values()) {
+            list.add(serializer.getObj((byte[]) o,tClass));
+        }
+        return list;
     }
 
-    public boolean saveToRetryList(String key, Message message) {
-        Store.INST.need_retry.put(key, serializer.toByte(message));
-        return true;
+    @Override
+    public void remove(String dbName, String key) {
+        getMapBy(dbName).remove(key);
+        getDB(dbName).commit();
     }
 
-    public Message getOfRetryList(String key) {
-        return serializer.getObj(Store.INST.need_retry.get(key));
-    }
-
-    public void removeOfRetryList(String key) {
-        Store.INST.need_retry.remove(key);
-    }
-
-    public boolean uptime(String key, long time) {
-        Store.INST.time.put(key, time);
-        return true;
-    }
-
-    public long getUptime(String key) {
-        return Store.INST.time.get(key);
-    }
-
-    public void removeOfUptime(String key) {
-        Store.INST.time.remove(key);
-    }
-
-    public Map appendOfRetryMap(Map<String ,Message> targetMap) {
-        for (byte[] bytes : need_retry.values()) {
-            Message message = serializer.getObj(bytes);
-            String key = message.getK().getId();
-            if (null != targetMap.get(key)) {
-                targetMap.put(key, message);
-                need_retry.remove(key);
+    @Override
+    public <T> List<T> find(String dbName, String topic,Class<?> tClass) {
+        BTreeMap map = getMapBy(dbName);
+        List<T> list = C.newList();
+        for (Object o : map.values()) {
+            T obj = serializer.getObj((byte[])o,tClass);
+            if (obj instanceof Message) {
+                if(((Message)obj).getK().getTopic().startsWith(topic)) list.add(obj);
+            }
+            if (obj instanceof Subscribe) {
+                if(((Subscribe)obj).getTopic().startsWith(topic)) list.add(obj);
             }
         }
-        return targetMap;
+        return list;
     }
 
-
     public static void main(String[] args) {
-        Message msg = Message.ofDef(new Message.Key(ID.ONLY.id(), "quene"), "hello,world!");
-        Store.INST.save("hello", msg);
-        System.err.println(Store.INST.get("hello"));
+        Message msg = Message.ofDef(new Message.Key(ID.ONLY.id(), "hello"), "hello,world!");
+        Store.INST.save(IStore.mq_all_data,msg.getK().getId(), msg);
+        System.err.println(Store.INST.<Message>get(IStore.mq_all_data,msg.getK().getId(), Message.class));
+        System.err.println(Store.INST.<Message>getAll(IStore.mq_all_data, Message.class));
+        System.err.println(Store.INST.<Message>find(IStore.mq_all_data,msg.getK().getTopic(),Message.class));
 
 
     }

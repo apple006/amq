@@ -63,7 +63,7 @@ public class Router implements HttpHandler {
     public static Router asRouter(Controller... controllers) {
         if (controllers == null) throw new IllegalArgumentException();
         Router router = new Router();
-        for (Controller controller : controllers){
+        for (Controller controller : controllers) {
             Router.addRoutes(controller.getClass(), controller, router);
         }
         return router;
@@ -148,10 +148,10 @@ public class Router implements HttpHandler {
                 if (indexes.length != 0 && indexes.length != parameters.size())
                     throw new IllegalArgumentException("Parameter mismatch. An index must be specified for all parameters, if any.");
                 Route route = new Route(requestType, path);
-                for (int i = 0; i < patterns.length; i++){
+                for (int i = 0; i < patterns.length; i++) {
                     route.where(parameters.get(i), patterns[i]);
                 }
-                for (int i = 0; i < indexes.length; i++){
+                for (int i = 0; i < indexes.length; i++) {
                     route.where(parameters.get(i), indexes[i]);
                 }
                 boolean isStatic = Modifier.isStatic(method.getModifiers());
@@ -214,10 +214,21 @@ public class Router implements HttpHandler {
     public Router add(Route route) {
         if (route == null)
             throw new IllegalArgumentException();
-        String requestType = route.requestType();
-        if (routes.containsKey(requestType))
-            routes.get(requestType).add(route);
-        else {
+        String requestType = route.requestType(); // GET/POST ...
+        if (routes.containsKey(requestType)) {
+            List<Route> routeList = routes.get(requestType);
+            boolean find = false;
+            for (Route r : routeList) {
+                if(r.path().equals(route.path())){
+                    find = true;
+                    break;
+                }
+            }
+            if(!find){
+                routeList.add(route);
+            }
+
+        } else {
             List<Route> routes = new ArrayList<>();
             routes.add(route);
             this.routes.put(requestType, routes);
@@ -238,31 +249,25 @@ public class Router implements HttpHandler {
             throw new RuntimeException("Unable to find route. Request type: " + requestType + ", uri: " + uri);
         List<Route> routes = this.routes.get(requestType);
         for (Route route : routes) {
-            if (route.matches(uri)){
+            if (route.matches(uri)) {
                 return route;
-            }else {
-                return new Route(requestType,"/404");
             }
-
         }
-
         logger.error("Unable to find route. Request type: " + requestType + ", uri: " + uri);
         return null;
     }
 
-
-
     @Override
     public void handle(HttpRequest req, HttpResponse res) {
-        if(null == req || null == res) return;
+        if (null == req || null == res) return;
         try {
             Object o = find(req.method(), req.uri());
-            if(!((Route) o).path().endsWith("404")){
-                if (null != o) o =((Route)o).invoke(req);
-                if (o instanceof HttpHandler){
+            if (!((Route) o).path().endsWith("404")) {
+                if (null != o) o = ((Route) o).invoke(req);
+                if (o instanceof HttpHandler) {
                     ((HttpHandler) o).handle(req, res);
                 }
-            }else {// 404
+            } else {// 404
                 HttpHandler e404 = new HttpHandler() {
                     @Override
                     public void handle(HttpRequest req, HttpResponse resp) {
@@ -275,8 +280,10 @@ public class Router implements HttpHandler {
             }
 
         } catch (InvocationTargetException | IllegalAccessException e) {
-           // throw new RuntimeException("Unable to invoke route action.", e);
+            // throw new RuntimeException("Unable to invoke route action.", e);
             logger.error("Unable to invoke route action.", e);
         }
     }
+
+
 }

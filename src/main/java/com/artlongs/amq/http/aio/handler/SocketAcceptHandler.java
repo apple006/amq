@@ -34,8 +34,8 @@ public class SocketAcceptHandler implements CompletionHandler<AsynchronousSocket
 	public void completed(AsynchronousSocketChannel client, Void attachment) {
 		int n = HttpServerState.CONCURRENT_NUMS.getAndIncrement();
 
-//		ByteBuffer byteBuf = ByteBuffer.allocate(256);// 内部堆 heap buffer
-		ByteBuffer byteBuf = HttpServerConfig.bufferPool.allocate().getResource(); // 分配外部 direct buffer
+		ByteBuffer byteBuf = ByteBuffer.allocate(1024);// 内部堆 heap buffer
+//		ByteBuffer byteBuf = HttpServerConfig.bufferPool.allocate().getResource(); // 分配外部 direct buffer
 		client.read(byteBuf, config.readWait, TimeUnit.SECONDS, byteBuf, new SocketReadHandler(httpServer,client,byteBuf));
 
 		while(n >= config.maxConnection) {

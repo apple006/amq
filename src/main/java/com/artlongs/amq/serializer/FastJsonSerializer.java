@@ -20,6 +20,10 @@ public class FastJsonSerializer implements ISerializer {
         return JSON.parseObject(bytes, Message.class);
     }
 
+    @Override
+    public <T extends Serializable> T getObj(byte[] bytes, Class<?> clzz) {
+        return JSON.parseObject(bytes, clzz);
+    }
 
     @Override
     public Message getObj(ByteBuffer byteBuffer) {

@@ -33,12 +33,12 @@ public class SocketReadHandler implements CompletionHandler<Integer, ByteBuffer>
 	}
 
 	@Override
-	public void completed(Integer result, ByteBuffer attachment) {
+	public void completed(Integer result, ByteBuffer buffer) {
 		if(result == -1) {
 			closeConn();
 			return;
 		}
-        resolver.excute(attachment);
+        resolver.excute(buffer);
 	}
 	@Override
 	public void failed(Throwable ex, ByteBuffer attachment) {
