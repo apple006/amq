@@ -53,6 +53,13 @@ public class MqConfig {
 	//  消息的默认存活时间(秒)
 	public static long msg_default_alive_tims = 86400;
 
+	// 启动客户端心跳检测
+	public static boolean start_check_client_alive = true;
+	// 启动流量显示
+	public static boolean start_flow_monitor= true;
+	// 启动 MQ 后台管理系统
+	public static boolean start_mq_admin= true;
+
 	//========================== DB ITME =====================================
 	// MAPDB 数据库文件
 	public static final String mapdb_file_path = "/volumes/work/mapdb/";

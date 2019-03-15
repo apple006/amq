@@ -10,6 +10,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
 /**
  * Func :
@@ -20,11 +21,11 @@ public class Render<K, V> implements HttpHandler {
 
     private byte[] data;
     private String templateUrl;
-    private C.Map<K, V> params;
+    private Map<K, V> params;
     private Fmt fmt;
 
 
-    public Render(String templateUrl, C.Map<K, V> params) {
+    public Render(String templateUrl, Map<K, V> params) {
         this.templateUrl = templateUrl;
         this.params = params;
     }
@@ -47,7 +48,7 @@ public class Render<K, V> implements HttpHandler {
         return result;
     }
 
-    public static <K, V> Render json(C.Map<K, V> params) {
+    public static <K, V> Render json(Map<K, V> params) {
         Render result = null;
         result = new Render("", params);
         result.fmt = Fmt.json;

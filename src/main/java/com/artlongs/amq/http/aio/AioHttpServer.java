@@ -17,118 +17,108 @@ import java.net.InetSocketAddress;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
-*@author leeton
-*2018年2月6日
-*
-*/
+ * @author leeton
+ * 2018年2月6日
+ */
 public class AioHttpServer implements HttpServer {
-	private static Logger LOGGER = LoggerFactory.getLogger(AioHttpServer.class);
-	private HttpServerConfig config = null;
-	private AsynchronousServerSocketChannel serverSocket = null;
-	private HttpHandler handler = null;
-	private HttpServerState state = null;
-	private Router router;
-	private SocketWriteHandler writer;
+    private static Logger LOGGER = LoggerFactory.getLogger(AioHttpServer.class);
+    private HttpServerConfig config = null;
+    private AsynchronousServerSocketChannel serverSocket = null;
+    private HttpHandler handler = null;
+    private HttpServerState state = null;
+    private Router router;
+    private SocketWriteHandler writer;
+    private AioHttpServer server;
 
-	public AioHttpServer(HttpServerConfig config) {
-		this.config = config;
-		state = new HttpServerState(this);
-		router = new Router();
-		init();
-	}
-	
-	public void init() {
+    public AioHttpServer(HttpServerConfig config) {
+        this.config = config;
+        state = new HttpServerState(this);
+        router = new Router();
+        this.server = this;
+    }
 
-	}
-
-	@Override
-	public void setDaemon(Runnable r) {
-		Thread t = new Thread(r);
-		t.setDaemon(true);
-	}
-
-	public void start() {
-		try {
-			ExecutorService threadPool = Executors.newFixedThreadPool(config.threadPoolSize);
-			AsynchronousChannelGroup group = AsynchronousChannelGroup.withThreadPool(threadPool);
-			serverSocket = AsynchronousServerSocketChannel.open(group);
-			serverSocket.bind(new InetSocketAddress(config.ip, config.port));
-			serverSocket.accept(null, new SocketAcceptHandler(this));
-			setDaemon(this);
-
-		} catch (IOException e) {
-			throw new RuntimeException(" http start on Error:" + e);
-		}
-		LOGGER.warn("AMQ-HTTP had started,listening {}:{}",config.ip,config.port);
-	}
+    public void start() {
+        Thread t = new Thread(start0());
+        t.setDaemon(true);
+        t.run();
+    }
 
 
-	public void shutdown() {
-		
-	}
+    public Runnable start0() {
+        return new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final ExecutorService channelPool = Executors.newFixedThreadPool(config.threadPoolSize);
+                    AsynchronousChannelGroup group = AsynchronousChannelGroup.withThreadPool(channelPool);
+                    serverSocket = AsynchronousServerSocketChannel.open(group);
+                    serverSocket.bind(new InetSocketAddress(config.ip, config.port));
+                    serverSocket.accept(null, new SocketAcceptHandler(server));
 
-	public void stop() {
-		
-	}
+                } catch (IOException e) {
+                    throw new RuntimeException(" http start on Error:" + e);
+                }
+                LOGGER.warn("AMQ-HTTP had started,listening {}:{}", config.ip, config.port);
+            }
+        };
+    }
 
-	public HttpServerState getState() {
-		return state;
-	}
-	
-	public HttpServerConfig getConfig() {
-		return config;
-	}
+    public void shutdown() {
+    }
 
+    public void stop() {
+    }
 
-	public AsynchronousServerSocketChannel getServerSocket() {
-		return serverSocket;
-	}
+    public HttpServerState getState() {
+        return state;
+    }
 
-	public void setServerSocket(AsynchronousServerSocketChannel serverSocket) {
-		this.serverSocket = serverSocket;
-	}
+    public HttpServerConfig getConfig() {
+        return config;
+    }
+    public AsynchronousServerSocketChannel getServerSocket() {
+        return serverSocket;
+    }
 
-	public void handler(HttpHandler handler) {
-		this.handler = handler;
-	}
+    public void setServerSocket(AsynchronousServerSocketChannel serverSocket) {
+        this.serverSocket = serverSocket;
+    }
 
-	public HttpServer addController(Controller... controllers) {
-		this.handler= Router.asRouter(controllers);
-		return this;
-	}
+    public void handler(HttpHandler handler) {
+        this.handler = handler;
+    }
 
-	public HttpHandler getHandler() {
-		return handler;
-	}
+    public HttpServer addController(Controller... controllers) {
+        this.handler = Router.asRouter(controllers);
+        return this;
+    }
 
-	@Override
-	public void writer(SocketWriteHandler writer) {
-		this.writer = writer;
+    public HttpHandler getHandler() {
+        return handler;
+    }
 
-	}
+    @Override
+    public void writer(SocketWriteHandler writer) {
+        this.writer = writer;
+    }
 
-	@Override
-	public SocketWriteHandler getWriter() {
-		return writer;
-	}
+    @Override
+    public SocketWriteHandler getWriter() {
+        return writer;
+    }
 
-	@Override
-	public void run() {
-		this.start();
-	}
-
-
-	public void closeConn(AsynchronousSocketChannel client) {
-		try {
-			if(null != client && client.isOpen()) {
-				client.close();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+    public void closeConn(AsynchronousSocketChannel client) {
+        try {
+            if (null != client && client.isOpen()) {
+                client.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

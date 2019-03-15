@@ -17,9 +17,6 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Created by ${leeton} on 2018/10/26.
@@ -29,40 +26,40 @@ public class NioHttpServer implements HttpServer {
     ServerSocketChannel socket;
     Selector selector = null;
     HttpServerConfig config;
-    private Executor theadPool;
 
     public NioHttpServer(HttpServerConfig config) {
         this.config = config;
-        init();
-    }
-
-    @Override
-    public void setDaemon(Runnable r) {
-        Thread t = new Thread(r);
-        t.setDaemon(true);
-        ((ExecutorService) theadPool).submit(t);
-    }
-
-    private void init(){
-        try {
-            theadPool = Executors.newFixedThreadPool(config.threadPoolSize);
-            setDaemon(this);
-            selector = Selector.open();
-            socket = ServerSocketChannel.open();
-            socket.bind(new InetSocketAddress(config.ip, config.port));
-            socket.configureBlocking(false);
-            socket.register(selector, SelectionKey.OP_ACCEPT);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
     public void start() {
+        Thread t = new Thread(start0());
+        t.setDaemon(true);
+        t.run();
+    }
+
+    private Runnable start0(){
+       return new Runnable(){
+            @Override
+            public void run() {
+                try {
+                    selector = Selector.open();
+                    socket = ServerSocketChannel.open();
+                    socket.bind(new InetSocketAddress(config.ip, config.port));
+                    socket.configureBlocking(false);
+                    socket.register(selector, SelectionKey.OP_ACCEPT);
+                    loop();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+    }
+
+    public void loop() {
         try {
             while (true) {
                 if (selector.select(config.connectTimeout) == 0) {
-                    System.out.println("==");
                     continue;
                 }
                 Iterator<SelectionKey> iter = selector.selectedKeys().iterator();
@@ -176,12 +173,6 @@ public class NioHttpServer implements HttpServer {
             sc.write(buf);
         }
         buf.compact();
-    }
-
-
-    @Override
-    public void run() {
-        this.start();
     }
 
     public static void main(String[] args) {

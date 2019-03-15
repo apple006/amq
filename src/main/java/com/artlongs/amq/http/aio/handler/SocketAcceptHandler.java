@@ -30,6 +30,7 @@ public class SocketAcceptHandler implements CompletionHandler<AsynchronousSocket
 		state = httpServer.getState();
 		config = httpServer.getConfig();
 	}
+
 	@Override
 	public void completed(AsynchronousSocketChannel client, Void attachment) {
 		int n = HttpServerState.CONCURRENT_NUMS.getAndIncrement();

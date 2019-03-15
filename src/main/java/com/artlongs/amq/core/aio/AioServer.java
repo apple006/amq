@@ -2,6 +2,7 @@ package com.artlongs.amq.core.aio;
 
 import com.artlongs.amq.core.MqConfig;
 import com.artlongs.amq.core.aio.plugin.HeartPlugin;
+import com.artlongs.amq.core.aio.plugin.MonitorPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,7 +134,7 @@ public class AioServer<T> implements Runnable{
             shutdown();
             throw e;
         }
-        LOGGER.info("amq-socket server started on port {}", config.getPort());
+        LOGGER.warn("amq-socket server started on {} {}", config.getHost(),config.getPort());
         LOGGER.info("amq-socket server config is {}", config);
     }
 
@@ -264,8 +265,12 @@ public class AioServer<T> implements Runnable{
         return this;
     }
 
-    public AioServer<T> setCheckAlive(boolean checkAlive) {
-        this.checkAlive = checkAlive;
+    public AioServer<T> startCheckAlive(boolean tf) {
+        this.checkAlive = tf;
+        return this;
+    }
+    public AioServer<T> startMonitorPlugin(boolean tf) {
+        if(tf) addPlugin(new MonitorPlugin());
         return this;
     }
 

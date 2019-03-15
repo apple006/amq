@@ -2,6 +2,7 @@ package com.artlongs.amq.http.routes;
 
 import com.artlongs.amq.http.HttpHandler;
 import com.artlongs.amq.http.HttpRequest;
+import org.osgl.util.C;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,58 +142,46 @@ public class Route {
         if (matcher.groupCount() != parameters.size())
             throw new RuntimeException("Parameter mismatch. Unable to find matcher group for each argument.");
         //没有入参
-        if (parameters.isEmpty() && method.getParameterCount()==0){
-            return method.invoke(parent,null);
+        if (parameters.isEmpty() && method.getParameterCount() == 0) {
+            return method.invoke(parent, null);
         }
 
         // path prames
         Class<?>[] types = method.getParameterTypes();
-        for (int i = 0; i < parameters.size(); i++) {
-            String s = matcher.group(i + 1).replace("/","");
+        for (int i = 0; i < parameters.size(); i++) { // 路径上的入参
+            String s = matcher.group(i + 1).replace("/", "");
             Class<?> c = types[i];
-            req.params().put(reverseParameterOrder.get(i),getValOfBaseType(c,s));
+            req.params().put(reverseParameterOrder.get(i), getValOfBaseType(c, s));
         }
+        List<Map> paramList = C.newList();
 
-        if (req.params().size() > 0) {
+        if (parameters.size() > 0) {// 路径上的入参
             return method.invoke(parent, req.params().values().toArray());
-        }else {
-            return method.invoke(parent, buildDefParamArr(types));
+        } else {//非路径上的入参
+            return method.invoke(parent, getDefParamArr(types, req.params()));
         }
 
     }
 
-
-    private Object[] buildDefParamArr(Class<?>[] types) {
-        Object[] tArr = new Object[types.length];
-        for (int i = 0; i < types.length; i++) {
-            tArr[i] = getOfParamType(types[i]);
+    private Object[] getDefParamArr(Class<?>[] types, Map<String, Object> params) {
+        Object[] tArr = new Object[params.size()];
+        int i = 0;
+        for (Object key : params.keySet()) {
+            tArr[i] = getValOfBaseType(types[i], (String) params.get(key));
+            i++;
         }
         return tArr;
     }
 
-    private Object getOfParamType(Class<?> c){
-        if (c == int.class || c == Integer.class)
-            return new Integer(null);
-        else if (c == long.class || c == Long.class)
-            return new Long(null);
-        else if (c == float.class || c == Float.class)
-            return new Float(null);
-        else if (c == double.class || c == Double.class) {
-            return new Double(null);
-        } else if (c == String.class || c == CharSequence.class) {
-            return new String();
-        }
-        return c;
-    }
 
-    private Object getValOfBaseType(Class<?> c,String v) {
+    private Object getValOfBaseType(Class<?> c, String v) {
         if (c == int.class || c == Integer.class)
             return Integer.parseInt(v);
         else if (c == long.class || c == Long.class)
             return Long.parseLong(v);
         else if (c == float.class || c == Float.class)
             return Float.parseFloat(v);
-        else if (c == double.class || c == Double.class){
+        else if (c == double.class || c == Double.class) {
             return Double.parseDouble(v);
         }
         return v;

@@ -71,7 +71,7 @@ public class App extends Thread {
 
         //
         httpServer.addController(controller1,controller2,topic);
-        httpServer.run();
+        httpServer.start();
 
         while (true) {
             try {

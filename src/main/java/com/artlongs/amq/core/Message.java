@@ -29,7 +29,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
     ////=============================================
     public static <V> Message ofDef(Key k, V v) {
-        long now = DateUtils.now();
+        long now = System.currentTimeMillis();
         Message m = new Message();
         m.k = k;
         m.v = v;
@@ -134,7 +134,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     }
 
     private static <V> Message ofPublicJob(Key k, V v) {
-        //注意这里不生成普通的订阅.MQ 中心里会手动生成一个特殊的订阅
+        //注意这里不生成普通的订阅. MQ 中心里会手动生成一个特殊的订阅
         return ofDef(k, v).setLife(Life.ALL_ACKED).setListen(Listen.FUTURE_AND_ONCE).setType(Type.PUBLISH_JOB);
     }
 
@@ -154,7 +154,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             stat.nodesDelivered = C.newSet();
         }
         stat.nodesDelivered.add(node);
-        stat.setMtime(DateUtils.now());
+        stat.setMtime(System.currentTimeMillis());
         stat.setOn(Message.ON.SENED);
     }
 
@@ -164,7 +164,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
             stat.nodesConfirmed = C.newSet();
         }
         stat.nodesConfirmed.add(node);
-        stat.setMtime(DateUtils.now());
+        stat.setMtime(System.currentTimeMillis());
         stat.setOn(ON.ACKED);
     }
 
@@ -295,7 +295,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
         private String id;
         private String topic;
-        private Integer sendNode;  //发布者 (pipeId)
+        private Integer sendNode;  //发布者节点 (pipeId)
 
         public Key(String id, String topic) {
             this.id = id;
@@ -350,7 +350,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
         private Long ttl = MqConfig.msg_default_alive_tims;   // Time To Live, 消息的存活时间,如果未成功发送,则最多存活一天
         private Long ctime; // create time
         private Long mtime; // modify time
-        private int delay;  // 延迟发送(消息未ACKED)
+        private int delay;  // 多次发送数(消息未ACKED,则delay多少秒后重发)
         private int retry;  // 重试次数(发送失败之后再重发)
         private Set<Integer> nodesDelivered; // 已送达
         private Set<Integer> nodesConfirmed; // 已确认
@@ -444,7 +444,12 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
      * 消息类型
      */
     public enum Type {
-        SUBSCRIBE, PUBLISH, ACK, PUBLISH_JOB, ACCEPT_JOB, FINISH_JOB;
+        SUBSCRIBE, // 普通订阅
+        PUBLISH,   // 普通发布消息
+        ACK,       // 签收消息
+        PUBLISH_JOB, //发布工作任务(PING)
+        ACCEPT_JOB,  //接受工作任务
+        FINISH_JOB;  //完成工作任务(PONG)
     }
 
     /**

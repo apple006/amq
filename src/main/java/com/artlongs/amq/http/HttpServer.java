@@ -3,12 +3,14 @@ package com.artlongs.amq.http;
 import com.artlongs.amq.http.aio.handler.SocketWriteHandler;
 import com.artlongs.amq.http.routes.Controller;
 
+import java.util.List;
+
 /**
 *@author leeton
  *2018年2月6日
  *
  */
-public interface HttpServer extends Runnable {
+public interface HttpServer {
 	void start();
 
 	void shutdown();
@@ -24,11 +26,9 @@ public interface HttpServer extends Runnable {
 	HttpServerConfig getConfig();
 
 	HttpServer addController(Controller... controller);
-
 	void writer(SocketWriteHandler writer);
 	SocketWriteHandler getWriter();
 
-	void setDaemon(Runnable runnable);
 
 
 

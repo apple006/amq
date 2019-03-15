@@ -1,11 +1,9 @@
 package com.artlongs.amq.core;
 
+import com.alibaba.fastjson.annotation.JSONField;
 import com.artlongs.amq.core.aio.AioPipe;
-import com.artlongs.amq.tools.RingBufferQueue;
 
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.Objects;
 
 /**
@@ -18,32 +16,20 @@ public class Subscribe implements Serializable {
 
     private String id;
     private String topic;
+    @JSONField(serialize = false, deserialize = false)
     private AioPipe pipe;
     private Message.Life life;
     private Message.Listen listen;
+    private long ctime;
     private int idx; // 在队列里的 index,记录下来,以加速remove
 
-    public Subscribe(String id, String topic, AioPipe pipe, Message.Life life,Message.Listen listen) {
+    public Subscribe(String id, String topic, AioPipe pipe, Message.Life life,Message.Listen listen,long ctime) {
         this.id = id;
         this.topic = topic;
         this.pipe = pipe;
         this.life = life;
         this.listen = listen;
-    }
-
-    public void remove(Collection<Subscribe> subscribeList, Subscribe target) {
-        Iterator<Subscribe> iterable = subscribeList.iterator();
-        while (iterable.hasNext()) {
-            Subscribe item = iterable.next();
-            if (item.equals(item)) {
-                subscribeList.remove(target);
-            }
-        }
-
-    }
-
-    public void remove(RingBufferQueue queue, Subscribe target) {
-        queue.remove(target.idx);
+        this.ctime = ctime;
     }
 
     @Override
@@ -60,7 +46,20 @@ public class Subscribe implements Serializable {
         return Objects.hash(topic, pipe);
     }
 
-//================================ 我的貂婵在那里 ================================================
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("Subscribe{");
+        sb.append("id='").append(id).append('\'');
+        sb.append(", topic='").append(topic).append('\'');
+        sb.append(", pipe=").append(pipe);
+        sb.append(", life=").append(life);
+        sb.append(", listen=").append(listen);
+        sb.append(", ctime=").append(ctime);
+        sb.append(", idx=").append(idx);
+        sb.append('}');
+        return sb.toString();
+    }
+    //================================ 我的貂婵在那里 ================================================
 
 
     public String getId() {
@@ -113,6 +112,15 @@ public class Subscribe implements Serializable {
 
     public Subscribe setListen(Message.Listen listen) {
         this.listen = listen;
+        return this;
+    }
+
+    public long getCtime() {
+        return ctime;
+    }
+
+    public Subscribe setCtime(long ctime) {
+        this.ctime = ctime;
         return this;
     }
 }

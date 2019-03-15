@@ -13,6 +13,7 @@ import com.artlongs.amq.disruptor.dsl.ProducerType;
 import com.artlongs.amq.disruptor.util.DaemonThreadFactory;
 import com.artlongs.amq.tools.FastList;
 import com.artlongs.amq.tools.RingBufferQueue;
+import com.artlongs.amq.tools.TimeWheelService;
 import org.osgl.util.C;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,24 +32,16 @@ public enum ProcessorImpl implements Processor {
     INST;
     private static Logger logger = LoggerFactory.getLogger(ProcessorImpl.class);
 
-    /**
-     * 从客户端读取到的数据缓存(普通publish消息) map(messageId,Message)
-     */
+    /** 从客户端读取到的数据缓存(普通publish消息) map(messageId,Message) */
     private ConcurrentSkipListMap<String, Message> cache_common_publish_message = new ConcurrentSkipListMap();
 
-    /**
-     * 发送失败的消息数据缓存 map(messageId,Message)
-     */
+    /** 发送失败的消息数据缓存 map(messageId,Message) */
     private ConcurrentSkipListMap<String, Message> cache_falt_message = new ConcurrentSkipListMap();
 
-    /**
-     * 发布的工作任务缓存
-     **/
+    /** 发布的工作任务缓存 **/
     private ConcurrentSkipListMap<String, Message> cache_public_job = new ConcurrentSkipListMap();
 
-    /**
-     * 客户端订阅的主题 RingBufferQueue(Subscribe)
-     */
+    /** 客户端订阅的缓存 RingBufferQueue(Subscribe) */
     private RingBufferQueue<Subscribe> cache_subscribe = new RingBufferQueue<>(MqConfig.mq_cache_map_sizes);
 
     // ringBuffer cap setting
@@ -66,9 +59,8 @@ public enum ProcessorImpl implements Processor {
     private RingBuffer<JobEvent> persistent_worker = null;
     // 消息持久化 worker pool
     private WorkerPool<JobEvent> persistent_worker_pool = null;
-
-    // scheduled to resend message
-    final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(3);
+    ExecutorService bizExecutor = null;
+    ExecutorService storeExecutor = null;
 
     public ProcessorImpl me() {
         return this;
@@ -77,21 +69,13 @@ public enum ProcessorImpl implements Processor {
     ProcessorImpl() {
         this.job_ringbuffer = createDisrupter().start();
         //
-        ExecutorService bizExecutor = Executors.newFixedThreadPool(MqConfig.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
-        ExecutorService storeExecutor = Executors.newFixedThreadPool(MqConfig.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
+        bizExecutor = Executors.newFixedThreadPool(MqConfig.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
+        storeExecutor = Executors.newFixedThreadPool(MqConfig.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
         this.biz_worker_pool = createWorkerPool(new BizEventHandler());
         this.biz_worker = biz_worker_pool.start(bizExecutor);
         //
         this.persistent_worker_pool = createWorkerPool(new StoreEventHandler());
         this.persistent_worker = persistent_worker_pool.start(storeExecutor);
-
-        // 计时任务
-        final ScheduledFuture<?> delaySend = scheduler.scheduleWithFixedDelay(
-                delaySendOnScheduled(), 5, MqConfig.msg_not_acked_resend_period, SECONDS);
-        final ScheduledFuture<?> retrySend = scheduler.scheduleWithFixedDelay(
-                retrySendOnScheduled(), 5, MqConfig.msg_falt_message_resend_period, SECONDS);
-        final ScheduledFuture<?> checkAlive = scheduler.scheduleWithFixedDelay(
-                checkAliveScheduled(), 1, MqConfig.msg_default_alive_tims, SECONDS);
 
     }
 
@@ -174,13 +158,13 @@ public enum ProcessorImpl implements Processor {
      *
      * @param message
      */
-    private void pulishJobEvent(Message message) {
+    public void pulishJobEvent(Message message) {
         message.getStat().setOn(Message.ON.QUENED);
         job_ringbuffer.publishEvent(JobEvent::translate, message);
     }
 
     /**
-     * 把消息放到线程池里去执行,因为消息是在客户端执行耗时比较长.
+     * 把消息放到线程池里去执行,因为消息是在客户端执行耗时比较长,并且包含持久化IO.
      *
      * @param message
      */
@@ -195,14 +179,15 @@ public enum ProcessorImpl implements Processor {
         ringBuffer.publishEvent(JobEvent::translate, message);
     }
 
-    private void tiggerStoreAllMsgToDb(RingBuffer<JobEvent> ringBuffer, Message message){
-        ringBuffer.publishEvent(JobEvent::translate, message,true);
+    private void tiggerStoreAllMsgToDb(RingBuffer<JobEvent> ringBuffer, Message message) {
+        ringBuffer.publishEvent(JobEvent::translate, message, true);
     }
 
-    private void tiggerStoreSubscribeToDb(RingBuffer<JobEvent> ringBuffer, Subscribe subscribe){
+    private void tiggerStoreSubscribeToDb(RingBuffer<JobEvent> ringBuffer, Subscribe subscribe) {
         ringBuffer.publishEvent(JobEvent::translate, subscribe);
     }
-    private void tiggerStoreComonMessageToDb(RingBuffer<JobEvent> ringBuffer, Message message){
+
+    private void tiggerStoreComonMessageToDb(RingBuffer<JobEvent> ringBuffer, Message message) {
         ringBuffer.publishEvent(JobEvent::translate, message);
     }
 
@@ -216,7 +201,7 @@ public enum ProcessorImpl implements Processor {
     private boolean addSubscribeIF(AioPipe pipe, Message message) {
         if (message.subscribeTF()) {
             String clientKey = message.getK().getId();
-            Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), pipe, message.getLife(), message.getListen());
+            Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), pipe, message.getLife(), message.getListen(),System.currentTimeMillis());
             RingBufferQueue.Result result = cache_subscribe.putIfAbsent(listen);
             if (result.success) {
                 listen.setIdx(result.index);
@@ -229,6 +214,7 @@ public enum ProcessorImpl implements Processor {
 
     /**
      * 标记消息已经收到
+     *
      * @param clientNode 消息的通道 ID
      * @param ack
      */
@@ -242,6 +228,7 @@ public enum ProcessorImpl implements Processor {
 
     /**
      * 消息类型为 {@link Message.Type.PUBLISH_JOB} 时,自动为它创建一个订阅,以收取任务结果
+     * NOTE: 这里是实时的收取任务结果,所以不需要保存到硬盘
      *
      * @param pipe
      * @param message
@@ -250,12 +237,11 @@ public enum ProcessorImpl implements Processor {
     private boolean buildSubscribeWaitingJobResult(AioPipe pipe, Message message) {
         String jobId = message.getK().getId();
         String jobTopc = Message.buildFinishJobTopic(jobId, message.getK().getTopic());
-        Subscribe subscribe = new Subscribe(jobId, jobTopc, pipe, message.getLife(), message.getListen());
+        Subscribe subscribe = new Subscribe(jobId, jobTopc, pipe, message.getLife(), message.getListen(),System.currentTimeMillis());
         RingBufferQueue.Result result = cache_subscribe.putIfAbsent(subscribe);
         subscribe.setIdx(result.index);
         return true;
     }
-
 
     /**
      * 按 TOPIC 前缀式匹配
@@ -331,7 +317,6 @@ public enum ProcessorImpl implements Processor {
         return false;
     }
 
-
     /**
      * 追加订阅者的消息ID及状态 , 以便订阅端读取到对应的消息
      *
@@ -361,100 +346,6 @@ public enum ProcessorImpl implements Processor {
             e.printStackTrace();
         }
         return false;
-    }
-
-    /**
-     * 客户端未确认的消息-->重发
-     *
-     * @return
-     */
-    @Override
-    public Runnable delaySendOnScheduled() {
-        Runnable delay = new Runnable() {
-            @Override
-            public void run() {
-                if (cache_subscribe.empty()) { // 从 DB 恢复所有订阅
-                    final List<Subscribe> retryList = Store.INST.getAll(IStore.mq_subscribe,Subscribe.class);
-                    for (Subscribe o : retryList) {
-                        cache_subscribe.put(o);
-                    }
-                }
-                if (C.isEmpty(cache_common_publish_message)) { //  从 DB 恢复所有未确认的消息
-                    final List<Message> retryList = Store.INST.getAll(IStore.mq_all_data,Message.class);
-                    for (Message o : retryList) {
-                        cache_common_publish_message.put(o.getK().getId(), o);
-                    }
-                }
-
-                for (Message message : cache_common_publish_message.values()) {
-                    if (MqConfig.msg_not_acked_resend_max_times > message.getStat().getDelay()) {
-                        logger.warn("The scheduler task is running delay-send message !");
-                        message.incrDelay();
-                        pulishJobEvent(message);
-                    }
-                }
-            }
-        };
-        return delay;
-    }
-
-    /**
-     * 发送失败的消息-->重发
-     *
-     * @return
-     */
-    @Override
-    public Runnable retrySendOnScheduled() {
-        final Runnable retry = new Runnable() {
-            @Override
-            public void run() {
-                if (C.isEmpty(cache_falt_message)) {
-                    final List<Message> retryList = Store.INST.getAll(IStore.mq_need_retry,Message.class);
-                    for (Message o : retryList) {
-                        cache_falt_message.put(o.getK().getId(), o);
-                    }
-                }
-                for (Message message : cache_falt_message.values()) {
-                    if (MqConfig.msg_falt_message_resend_max_times > message.getStat().getRetry()) {
-                        logger.warn("The scheduler task is running retry-send message !");
-                        message.incrRetry();
-                        pulishJobEvent(message);
-                    }
-                }
-            }
-        };
-        return retry;
-    }
-
-    /**
-     * 删除过期的消息
-     *
-     * @return
-     */
-    public Runnable checkAliveScheduled() {
-        final Runnable retry = new Runnable() {
-            @Override
-            public void run() {
-                if (C.isEmpty(cache_common_publish_message)) { //  从 DB 恢复所有未确认的消息
-                    final List<Message> retryList = Store.INST.getAll(IStore.mq_all_data,Message.class);
-                    for (Message o : retryList) {
-                        cache_common_publish_message.put(o.getK().getId(), o);
-                    }
-                }
-                for (Message message : cache_common_publish_message.values()) {
-                    long cTime = message.getStat().getCtime();
-                    long now = System.currentTimeMillis();
-                    long ttl = message.getStat().getTtl();
-                    if ((now - cTime >= ttl) && Message.Life.FOREVER != message.getLife()) {
-                        String id = message.getK().getId();
-                        logger.warn("The scheduler task is running remove message({}) on TTL.", id);
-                        removeDbDataOfDone(id);
-                        removeCacheOfDone(id);
-                    }
-                }
-            }
-        };
-        return retry;
     }
 
     /**
@@ -558,7 +449,7 @@ public enum ProcessorImpl implements Processor {
         String topic = acceptor.getK().getTopic();
         Message job = matchPublishJob(topic);
         if (null != job) {
-            Subscribe subscribe = new Subscribe(acceptor.getK().getId(), topic, pipe, acceptor.getLife(), acceptor.getListen());
+            Subscribe subscribe = new Subscribe(acceptor.getK().getId(), topic, pipe, acceptor.getLife(), acceptor.getListen(),System.currentTimeMillis());
             sendMessageToSubcribe(job, subscribe);
         }
     }
@@ -576,6 +467,18 @@ public enum ProcessorImpl implements Processor {
             if (message.getK().getTopic().startsWith(topic)) return message;
         }
         return null;
+    }
+
+    @Override
+    public void shutdown() {
+        clearAllCache();
+    }
+
+    private void clearAllCache() {
+        cache_public_job.clear();
+        cache_falt_message.clear();
+        cache_common_publish_message.clear();
+        cache_subscribe.clear();
     }
 
     public ConcurrentSkipListMap<String, Message> getCache_common_publish_message() {

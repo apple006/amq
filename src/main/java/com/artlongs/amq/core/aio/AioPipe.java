@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
@@ -15,7 +16,7 @@ import java.util.concurrent.Semaphore;
  * 不喜欢 session 这个单词,按 nProcess 项目把 channel 叫 pipe(通道),感觉更好理解
  * @author: leeton on 2019/2/22.
  */
-public class AioPipe<T> {
+public class AioPipe<T> implements Serializable {
     private static final Logger logger = LoggerFactory.getLogger(AioPipe.class);
 
     private Integer id;
@@ -70,7 +71,10 @@ public class AioPipe<T> {
      */
     private Object attachment;
 
-    AioPipe(AsynchronousSocketChannel channel, AioServerConfig config, Reader<T> reader, Writer<T> writer) {
+    public AioPipe() {
+    }
+
+    public AioPipe(AsynchronousSocketChannel channel, AioServerConfig config, Reader<T> reader, Writer<T> writer) {
         this.channel = channel;
         this.reader = reader;
         this.writer = writer;
@@ -385,5 +389,11 @@ public class AioPipe<T> {
         this.writeSemaphore.release();
     }
 
-
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("AioPipe{");
+        sb.append("id=").append(id);
+        sb.append('}');
+        return sb.toString();
+    }
 }

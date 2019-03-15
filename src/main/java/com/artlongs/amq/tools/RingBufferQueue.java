@@ -2,8 +2,11 @@ package com.artlongs.amq.tools;
 
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.Semaphore;
 
 /**
  * Func : RingBuffer Queue, 自动扩容
@@ -16,8 +19,8 @@ public class RingBufferQueue<T> implements Iterable {
     private int head = 0;
     private int tail = 0;
     private int capacity = DEFAULT_SIZE;
-    private int realSize = 0; //实际的元素个数
-    private final AtomicInteger lock = new AtomicInteger();
+    private int realSize = 0; //实际的 item 个数
+    private final Semaphore track = new Semaphore(1);
 
     public RingBufferQueue() {
         this.capacity = DEFAULT_SIZE;
@@ -48,10 +51,11 @@ public class RingBufferQueue<T> implements Iterable {
     }
 
     public void clear() {
-        lock.getAndIncrement();
+        track.tryAcquire();
         Arrays.fill(items, null);
         this.head = 0;
         this.tail = 0;
+        track.release();
     }
 
     public int size() {
@@ -63,7 +67,6 @@ public class RingBufferQueue<T> implements Iterable {
     }
 
     public int put(T v) {
-        lock.getAndIncrement();
         if (full()) {
             extendCapacity();
         }
@@ -83,7 +86,6 @@ public class RingBufferQueue<T> implements Iterable {
         if (empty()) {
             return null;
         }
-        lock.getAndIncrement();
         T item = items[head];
         remove(head);
         head = (head + 1) % capacity;
@@ -91,7 +93,7 @@ public class RingBufferQueue<T> implements Iterable {
         return item;
     }
 
-    public T getOf(int index) {
+    public T get(int index) {
         if (index >= size() || index < 0) throw new UnsupportedOperationException("RingBufferQueue,队列上标或下标溢出.");
         T item = items[index];
         return item;
@@ -123,7 +125,6 @@ public class RingBufferQueue<T> implements Iterable {
      * @param index
      */
     public void remove(int index) {
-        lock.getAndIncrement();
         if (index < 0) throw new UnsupportedOperationException("RingBufferQueue,队列上标溢出.");
         items[index] = null;
     }
@@ -132,13 +133,14 @@ public class RingBufferQueue<T> implements Iterable {
      * 扩容
      */
     private void extendCapacity() {
-        lock.getAndIncrement();
+        track.tryAcquire();
         final int oldCapacity = items.length;
         final int newCapacity = capacity << 1; //扩容一倍
         final T[] newElementData = (T[]) Array.newInstance(Object.class, newCapacity);
         System.arraycopy(items, 0, newElementData, 0, oldCapacity);
         this.items = newElementData;
         this.capacity = newCapacity;
+        track.release();
     }
 
     public T[] asArray(Class<?> clazz) {

@@ -17,12 +17,13 @@ public class StoreEventHandler implements WorkHandler<JobEvent> {
     private static Logger logger = LoggerFactory.getLogger(StoreEventHandler.class);
     @Override
     public void onEvent(JobEvent event) throws Exception {
+        Message message = event.getMessage();
+        if (message != null && Message.Type.ACK == message.getType()) return; // 签收的消息,没必要保存
+
         logger.debug("[S]执行消息保存到硬盘 ......");
-        if(event.isStoreAllMsg()){
-            Message message = event.getMessage();
+        if(event.isStoreAllMsg()){ // 开启了保存所有消息
             Store.INST.save(IStore.mq_all_data, message.getK().getId(), message);
         }else {
-            Message message = event.getMessage();
             if (message != null) {
                 Store.INST.save(getDbNameByMsgType(message),message.getK().getId(), message);
             }

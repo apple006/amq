@@ -104,7 +104,6 @@ public final class MonitorPlugin<T> extends QuickTimerTask implements Monitor<T>
         outFlow.addAndGet(writeSize);
     }
 
-
     @Override
     public void run() {
         long curInFlow = inFlow.getAndSet(0);

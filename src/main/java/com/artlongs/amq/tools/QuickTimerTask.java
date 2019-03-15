@@ -36,9 +36,7 @@ public abstract class QuickTimerTask extends TimerTask {
     /**
      * 获取定时任务的延迟启动时间
      */
-    protected long getDelay() {
-        return 0;
-    }
+    protected abstract long getDelay();
 
     /**
      * 获取定时任务的执行频率
