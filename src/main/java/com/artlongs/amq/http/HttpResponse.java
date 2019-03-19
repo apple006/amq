@@ -8,10 +8,10 @@ package com.artlongs.amq.http;
 public interface HttpResponse {
 	String getHeader(String name);
 	void setHeader(String name, String value);
-	int getState();
-	void setState(int code);
-	void append(String str);
-	void flush() ;
-	void write(byte[] data) ;
+	HttpStatus getState();
+	void setState(HttpStatus state);
+	void append(String body);
+	void append(byte[] body) ;
+
 	void end();
 }

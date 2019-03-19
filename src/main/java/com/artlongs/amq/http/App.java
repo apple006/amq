@@ -3,7 +3,6 @@ package com.artlongs.amq.http;
 import com.artlongs.amq.core.Message;
 import com.artlongs.amq.core.store.IStore;
 import com.artlongs.amq.core.store.Store;
-import com.artlongs.amq.http.aio.AioHttpServer;
 import com.artlongs.amq.http.routes.Controller;
 import com.artlongs.amq.http.routes.Get;
 import org.osgl.util.C;
@@ -21,23 +20,11 @@ public class App extends Thread {
 
 	public static void main(String[] args) {
         //
-		HttpServer httpServer = new AioHttpServer(new HttpServerConfig());
-/*
-		Controller controller= new Controller() {
-			@Get("/user")
-			public HttpHandler index(String username) {
-                return ((res,resp)->{
-                    resp.setState(200);
-                    resp.append(username);
-                    resp.end();
-
-                });
-			}
-		};*/
+        HttpServer httpServer = AioHttpServer.instance;
 
         // Template
         Controller controller1= new Controller() {
-            @Get("/user")
+            @Get("/hello")
             public Render index() {
                 return Render.template("/hello.html");
             }
@@ -63,7 +50,7 @@ public class App extends Thread {
         };
 
         //
-        httpServer.addController(controller1,controller2,topic);
+        httpServer.getHttpProcessor().addController(controller1,controller2,topic);
         httpServer.start();
 
         while (true) {

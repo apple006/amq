@@ -131,6 +131,14 @@ public class IOUtils {
         }
     }
 
+    public static void closeChannel(AsynchronousSocketChannel channel) {
+        try {
+            channel.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static String getRemoteAddress(SocketChannel channel){
         try {
            return channel.getRemoteAddress().toString();

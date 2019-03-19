@@ -148,7 +148,7 @@ public class Route {
         // path prames
         Class<?>[] types = method.getParameterTypes();
         for (int i = 0; i < pathParams.size(); i++) { // 路径上的入参,追加到 req.params
-            String s = matcher.group(i + 1).replace("/", "");
+            String s = matcher.group(i + 1);
             Class<?> c = types[i];
             req.params().putIfAbsent(reversePathParamsOrder.get(i), getValOfBaseType(c, s));
         }

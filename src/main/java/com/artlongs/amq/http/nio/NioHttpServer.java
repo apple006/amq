@@ -4,7 +4,6 @@ import com.artlongs.amq.http.HttpHandler;
 import com.artlongs.amq.http.HttpServer;
 import com.artlongs.amq.http.HttpServerConfig;
 import com.artlongs.amq.http.HttpServerState;
-import com.artlongs.amq.http.aio.handler.SocketWriteHandler;
 import com.artlongs.amq.http.routes.Controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +43,7 @@ public class NioHttpServer  {
                 try {
                     selector = Selector.open();
                     socket = ServerSocketChannel.open();
-                    socket.bind(new InetSocketAddress(config.ip, config.port));
+                    socket.bind(new InetSocketAddress(config.host, config.port));
                     socket.configureBlocking(false);
                     socket.register(selector, SelectionKey.OP_ACCEPT);
                     loop();
@@ -122,13 +121,6 @@ public class NioHttpServer  {
         return null;
     }
 
-    public void writer(SocketWriteHandler writer) {
-
-    }
-
-    public SocketWriteHandler getWriter() {
-        return null;
-    }
 
     public static void handleAccept(SelectionKey key) throws IOException {
         ServerSocketChannel ssChannel = (ServerSocketChannel) key.channel();

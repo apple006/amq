@@ -19,9 +19,9 @@ public class HttpServerConfig {
 
 	public static Charset charsets = StandardCharsets.UTF_8;
 	public static int port = 8080;
-	public static String ip = "0.0.0.0";
-	public static int maxConnection = 1000;
-	public static int maxConcurrent = 1000;
+	public static String host = "0.0.0.0";
+	public static int maxConnection = 100;
+	public static int maxConcurrent = 100;
 	public static int readWait = 3;
 	public static int requestWait = 300;
 	public static int threadPoolSize=20;

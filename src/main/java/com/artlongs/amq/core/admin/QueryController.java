@@ -18,19 +18,13 @@ import java.util.stream.Collectors;
  *
  * @author: leeton on 2019/3/15.
  */
-public class QueryController {
+public class QueryController extends BaseController {
 
-    public Controller[] getControllers(){
-        Controller[] controllers = {tags,topic,topic_qurey};
-        return controllers;
+    @Override
+    protected void addController() {
+        set(topic);
+        set(topic_qurey);
     }
-
-    Controller tags = new Controller() {
-        @Get("/views/tags/{all}")
-        public Render topicIndex(String all) {
-            return Render.template("/tags/"+all);
-        }
-    };
 
     Controller topic = new Controller() {
         @Get("/topic")
@@ -41,7 +35,7 @@ public class QueryController {
 
     Controller topic_qurey = new Controller() {
         @Get("/topic/q")
-        public Render topicQurey(String topic, Long begin, Long end,int pageNumber,int pageSize) {
+        public Render topicQurey(String topic, Long begin, Long end, int pageNumber, int pageSize) {
             Map<String, Subscribe> subscribeMap = C.newMap();
             Collection<Subscribe> subscribeList = Store.INST.<Subscribe>getAll(IStore.mq_subscribe, Subscribe.class);
             List<Subscribe> filterList = subscribeList.stream()

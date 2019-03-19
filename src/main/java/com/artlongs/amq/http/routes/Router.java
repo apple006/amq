@@ -3,6 +3,7 @@ package com.artlongs.amq.http.routes;
 import com.artlongs.amq.http.HttpHandler;
 import com.artlongs.amq.http.HttpRequest;
 import com.artlongs.amq.http.HttpResponse;
+import com.artlongs.amq.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -271,7 +272,7 @@ public class Router implements HttpHandler {
                 HttpHandler e404 = new HttpHandler() {
                     @Override
                     public void handle(HttpRequest req, HttpResponse resp) {
-                        resp.setState(404);
+                        resp.setState(HttpStatus.NOT_FOUND);
                         resp.append("<h2>Page Not Found. (404)</h2>");
                         resp.end();
                     }

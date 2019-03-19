@@ -32,9 +32,9 @@ public class Render<K, V> implements HttpHandler {
 
     @Override
     public void handle(HttpRequest req, HttpResponse resp) {
-        resp.setState(200);
+        resp.setState(HttpStatus.OK);
         setHeadOfFmt(resp);
-        resp.write(data);
+        resp.append(data);
         resp.end();
     }
 
@@ -43,8 +43,7 @@ public class Render<K, V> implements HttpHandler {
     }
 
     public static <K, V> Render template(String url, C.Map<K, V> params) {
-        Render result = null;
-        result = new Render(url, params);
+        Render result = new Render(url, params);
         result.data = read(url);
         result.fmt = Fmt.html;
 //        System.err.println(new String(result.data));
@@ -53,8 +52,7 @@ public class Render<K, V> implements HttpHandler {
     }
 
     public static <K, V> Render json(Map<K, V> params) {
-        Render result = null;
-        result = new Render("", params);
+        Render result = new Render("", params);
         result.fmt = Fmt.json;
         result.data = JSON.toJSONBytes(params);
 //        System.err.println(new String(result.data));
@@ -62,6 +60,12 @@ public class Render<K, V> implements HttpHandler {
         return result;
     }
 
+
+    /**
+     * 读取模板文件
+     * @param url 模板
+     * @return
+     */
     private static byte[] read(String url) {
         try {
             Path path = Paths.get(getHomePath().getPath() + url);

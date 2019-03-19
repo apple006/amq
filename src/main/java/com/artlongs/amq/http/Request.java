@@ -1,6 +1,8 @@
 package com.artlongs.amq.http;
 
 
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,14 +12,99 @@ import java.util.Map;
 *2018年2月6日
 *
 */
-public class Request implements HttpRequest {
+public class Request extends Http implements HttpRequest {
 
 	public String method = METHOD_GET;
 	public String uri;
 	public String query;
 	public byte[] bodyBytes;
+	public StringBuilder sourceTxt = new StringBuilder();
 	public final Map<String,String> headers = new HashMap<>();
 	public final Map<String,Object> params = new HashMap<>();
+	private ReadState state = ReadState.BEGIN;
+
+	public enum ReadState {
+		BEGIN, REQ_FIRST_LINE,HEADERS, BODY, END
+		}
+
+	/**
+	 * 把数据按 Http protocol 解析为 Request对象
+	 * @param data
+	 * @returnH
+	 */
+	public synchronized Request build(ByteBuffer data){
+		data.rewind();
+		CharBuffer buffer = HttpServerConfig.charsets.decode(data);
+		sourceTxt.append(buffer);
+		if(state == ReadState.BEGIN || state == ReadState.REQ_FIRST_LINE) {
+			resolveFirstLine();
+		}
+		if(state == ReadState.HEADERS) {
+			resolveHeader();
+		}
+		if(state == ReadState.BODY) {
+			resolveBody(sourceTxt);
+		}
+		return this;
+	}
+	private void resolveFirstLine() {
+		state = ReadState.REQ_FIRST_LINE;
+		int x = sourceTxt.indexOf("\r\n");
+		if(x >= 0) {
+			String firstLine = sourceTxt.substring(0,x);
+			sourceTxt.delete(0, x+2);
+			x = firstLine.indexOf(' ');
+			//如果x<0代表请求违法，会抛出异常
+			this.method = firstLine.substring(0, x).toUpperCase();
+			x++;
+			int y = firstLine.indexOf(' ',x);
+			String uri = firstLine.substring(x, y);
+			x = uri.indexOf('?');
+			if(x>0) {
+				this.uri = uri.substring(0,x);
+				this.query = uri.substring(++x);
+				parserReqParams(this.query);
+			}else {
+				this.uri = uri;
+			}
+		}
+		state = ReadState.HEADERS;
+	}
+	private void resolveHeader() {
+		int x = sourceTxt.indexOf("\r\n");
+		while(x>0) {
+			int y = sourceTxt.indexOf(":");
+			String key = sourceTxt.substring(0,y).trim();
+			String value = sourceTxt.substring(y+1, x);
+			this.headers.put(key, value);
+			sourceTxt.delete(0, x+2);
+			x = sourceTxt.indexOf("\r\n");
+		}
+		if(x==0) {
+			sourceTxt.delete(0, 2);
+			if(Request.METHOD_POST.equals(this.method)) {
+				state = ReadState.BODY;
+			}else {
+				state = ReadState.END;
+			}
+			return;
+		}
+		state = ReadState.END;
+	}
+	private void resolveBody(StringBuilder data) {
+		if (state != ReadState.BODY) return;
+		this.bodyBytes = data.toString().getBytes();
+		state = ReadState.END;
+	}
+
+	private void parserReqParams(String paramStr) {
+		if (paramStr.length() <= 0) return;
+		String[] paramArr = paramStr.split("&");
+		for (String kvStr : paramArr) {
+			String[] kv = kvStr.split("=");
+			this.params.put(kv[0], kv[1]);
+		}
+	}
 
 	@Override
 	public String uri() {

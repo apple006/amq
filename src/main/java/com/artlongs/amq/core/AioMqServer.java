@@ -1,10 +1,8 @@
 package com.artlongs.amq.core;
 
-import com.artlongs.amq.core.admin.QueryController;
 import com.artlongs.amq.core.aio.AioServer;
+import com.artlongs.amq.http.AioHttpServer;
 import com.artlongs.amq.http.HttpServer;
-import com.artlongs.amq.http.HttpServerConfig;
-import com.artlongs.amq.http.aio.AioHttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,10 +53,7 @@ public class AioMqServer {
 
     public void startAdmin(){
         if (MqConfig.start_mq_admin) {
-            httpServer = new AioHttpServer(new HttpServerConfig());
-            httpServer.addController(new QueryController().getControllers());
-            httpServer.start();
-
+            AioHttpServer.instance.start();
         }
     }
 
