@@ -38,8 +38,8 @@ public class App extends Thread {
         // Template
         Controller controller1= new Controller() {
             @Get("/user")
-            public Render index(String username) {
-				return Render.template("/hello.html",C.newMap("username", username));
+            public Render index() {
+                return Render.template("/hello.html");
             }
         };
 
@@ -55,16 +55,9 @@ public class App extends Thread {
             public Render index() {
                 C.Map params = C.Map().readOnly(false);
                 Collection<Message> messageList = Store.INST.<Message>getAll(IStore.mq_all_data,Message.class);
-    /*            while (iterator.hasNext()) {
-                    Subscribe subscribe = iterator.next();
-                    if (subscribe != null) {
-                        params.put(subscribe.getId(), subscribe.getTopic());
-                    }
-                }*/
                 for (Message message : messageList) {
                     params.put(message.getK().getId(), message);
                 }
-
                 return Render.json(params);
             }
         };

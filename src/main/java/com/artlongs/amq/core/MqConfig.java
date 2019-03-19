@@ -51,7 +51,7 @@ public class MqConfig {
 	// 保存所有的消息(持久化)
 	public static boolean store_all_message_to_db = true;
 	//  消息的默认存活时间(秒)
-	public static long msg_default_alive_tims = 86400;
+	public static long msg_default_alive_time_second = 86400;
 
 	// 启动客户端心跳检测
 	public static boolean start_check_client_alive = true;

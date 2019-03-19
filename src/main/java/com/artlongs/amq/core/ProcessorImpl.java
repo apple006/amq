@@ -410,6 +410,7 @@ public enum ProcessorImpl implements Processor {
     public void removeDbDataOfDone(String key) {
         Store.INST.remove(IStore.mq_all_data, key);
         Store.INST.remove(IStore.mq_need_retry, key);
+        Store.INST.remove(IStore.mq_common_publish, key);
     }
 
     private void removeSubscribeCacheOnAck(String ackId) {
@@ -418,17 +419,22 @@ public enum ProcessorImpl implements Processor {
             Subscribe subscribe = iter.next();
             if (subscribe != null && ackId.equals(subscribe.getId())) {
                 cache_subscribe.remove(subscribe.getIdx());
+                removeSubscribeOfDB(subscribe.getId());
                 break;
             }
         }
     }
 
-    private void removeSubscribeOfCache(Subscribe subscribe) {
+    public void removeSubscribeOfCache(Subscribe subscribe) {
         try {
             cache_subscribe.remove(subscribe.getIdx());
         } catch (Exception e) {
             logger.error(" remove subscribe-cache element exception.");
         }
+    }
+
+    public void removeSubscribeOfDB(String subscribeId) {
+        Store.INST.remove(IStore.mq_subscribe, subscribeId);
     }
 
     private boolean isPublishJob(Message message) {

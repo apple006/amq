@@ -2,7 +2,6 @@ package com.artlongs.amq.http.routes;
 
 import com.artlongs.amq.http.HttpHandler;
 import com.artlongs.amq.http.HttpRequest;
-import org.osgl.util.C;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,9 +22,9 @@ public class Route {
     public static final String DEFAULT_PARAMETER_PATTERN = ".+";
     public static final Pattern PARAMETER_PATTERN = Pattern.compile("\\{([A-z]+)}");
     private final String path;
-    private final List<String> parameters = new ArrayList<>();
-    private final Map<Integer, String> reverseParameterOrder = new HashMap<>();
-    private final Map<String, Integer> parameterOrder = new HashMap<>();
+    private final List<String> pathParams = new ArrayList<>();
+    private final Map<Integer, String> reversePathParamsOrder = new HashMap<>();
+    private final Map<String, Integer> pathParamsOrder = new HashMap<>();
     private final Map<String, String> parameterPatterns = new HashMap<>();
     private final String requestType;
     private HttpHandler direct;
@@ -42,9 +41,9 @@ public class Route {
         int i = 0;
         while (matcher.find()) {
             String parameter = matcher.group(1);
-            parameters.add(parameter);
-            parameterOrder.put(parameter, i);
-            reverseParameterOrder.put(i, parameter);
+            pathParams.add(parameter);
+            pathParamsOrder.put(parameter, i);
+            reversePathParamsOrder.put(i, parameter);
             parameterPatterns.put(parameter, DEFAULT_PARAMETER_PATTERN);
             i++;
         }
@@ -81,16 +80,16 @@ public class Route {
     }
 
     public Route where(String parameter, int index) {
-        if (!parameterOrder.containsKey(parameter))
+        if (!pathParamsOrder.containsKey(parameter))
             throw new IllegalArgumentException("Unknown parameter: " + parameter);
-        int original = parameterOrder.get(parameter);
+        int original = pathParamsOrder.get(parameter);
         if (original == index)
             return this;
-        String previous = reverseParameterOrder.get(index);
-        parameterOrder.put(previous, original);
-        reverseParameterOrder.put(original, previous);
-        parameterOrder.put(parameter, index);
-        reverseParameterOrder.put(index, parameter);
+        String previous = reversePathParamsOrder.get(index);
+        pathParamsOrder.put(previous, original);
+        reversePathParamsOrder.put(original, previous);
+        pathParamsOrder.put(parameter, index);
+        reversePathParamsOrder.put(index, parameter);
         return this;
     }
 
@@ -139,27 +138,27 @@ public class Route {
         Matcher matcher = (evaluatedPattern != null ? evaluatedPattern : (evaluatedPattern = compile())).matcher(req.uri());
         if (!matcher.matches())
             throw new RuntimeException("Unable to match uri against route pattern.");
-        if (matcher.groupCount() != parameters.size())
+        if (matcher.groupCount() != pathParams.size())
             throw new RuntimeException("Parameter mismatch. Unable to find matcher group for each argument.");
         //没有入参
-        if (parameters.isEmpty() && method.getParameterCount() == 0) {
+        if (pathParams.isEmpty() && method.getParameterCount() == 0) {
             return method.invoke(parent, null);
         }
 
         // path prames
         Class<?>[] types = method.getParameterTypes();
-        for (int i = 0; i < parameters.size(); i++) { // 路径上的入参
+        for (int i = 0; i < pathParams.size(); i++) { // 路径上的入参,追加到 req.params
             String s = matcher.group(i + 1).replace("/", "");
             Class<?> c = types[i];
-            req.params().put(reverseParameterOrder.get(i), getValOfBaseType(c, s));
+            req.params().putIfAbsent(reversePathParamsOrder.get(i), getValOfBaseType(c, s));
         }
-        List<Map> paramList = C.newList();
 
-        if (parameters.size() > 0) {// 路径上的入参
-            return method.invoke(parent, req.params().values().toArray());
-        } else {//非路径上的入参
-            return method.invoke(parent, getDefParamArr(types, req.params()));
+        int methodParmsNums = method.getParameterCount();
+        if (methodParmsNums != req.params().size()) {
+            throw new RuntimeException("Parameter mismatch.");
         }
+
+        return method.invoke(parent, getDefParamArr(types, req.params()));
 
     }
 
@@ -172,7 +171,6 @@ public class Route {
         }
         return tArr;
     }
-
 
     private Object getValOfBaseType(Class<?> c, String v) {
         if (c == int.class || c == Integer.class)

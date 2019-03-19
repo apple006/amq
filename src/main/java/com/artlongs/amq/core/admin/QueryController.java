@@ -9,6 +9,7 @@ import com.artlongs.amq.http.routes.Get;
 import org.osgl.util.C;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -20,36 +21,35 @@ import java.util.stream.Collectors;
 public class QueryController {
 
     public Controller[] getControllers(){
-        Controller[] controllers = {topic, topic_qurey};
+        Controller[] controllers = {tags,topic,topic_qurey};
         return controllers;
     }
 
-    /**
-     * 列出所有主题
-     */
+    Controller tags = new Controller() {
+        @Get("/views/tags/{all}")
+        public Render topicIndex(String all) {
+            return Render.template("/tags/"+all);
+        }
+    };
+
     Controller topic = new Controller() {
         @Get("/topic")
-        public Render allTopic() {
-            C.Map params = C.newMap();
-            Collection<Subscribe> subscribeList = Store.INST.<Subscribe>getAll(IStore.mq_subscribe, Subscribe.class);
-            for (Subscribe subscribe : subscribeList) {
-                params.put(subscribe.getId(), subscribe);
-            }
-            return Render.json(params);
+        public Render topicIndex() {
+            return Render.template("/topic.html");
         }
     };
 
     Controller topic_qurey = new Controller() {
         @Get("/topic/q")
-        public Render topicQurey(String topic, Long begin, Long end) {
-            Map<String, Subscribe> params = C.newMap();
+        public Render topicQurey(String topic, Long begin, Long end,int pageNumber,int pageSize) {
+            Map<String, Subscribe> subscribeMap = C.newMap();
             Collection<Subscribe> subscribeList = Store.INST.<Subscribe>getAll(IStore.mq_subscribe, Subscribe.class);
-            params = subscribeList.stream()
+            List<Subscribe> filterList = subscribeList.stream()
                     .filter(s -> s.getTopic().startsWith(topic))
                     .filter(s -> s.getCtime() >= begin && s.getCtime() <= end)
-            .collect(Collectors.toMap(s->s.getId(),s->s));
+                    .collect(Collectors.toList());
 
-            return Render.json(params);
+            return Render.json(C.Map("subscribe", filterList));
         }
     };
 

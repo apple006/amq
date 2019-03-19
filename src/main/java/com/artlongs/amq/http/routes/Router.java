@@ -262,7 +262,7 @@ public class Router implements HttpHandler {
         if (null == req || null == res) return;
         try {
             Object o = find(req.method(), req.uri());
-            if (!((Route) o).path().endsWith("404")) {
+            if (o!=null && !((Route) o).path().endsWith("404")) {
                 if (null != o) o = ((Route) o).invoke(req);
                 if (o instanceof HttpHandler) {
                     ((HttpHandler) o).handle(req, res);

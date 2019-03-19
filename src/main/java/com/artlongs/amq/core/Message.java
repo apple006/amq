@@ -1,7 +1,6 @@
 package com.artlongs.amq.core;
 
 import com.alibaba.fastjson.JSON;
-import com.artlongs.amq.tools.DateUtils;
 import com.artlongs.amq.tools.ID;
 import org.osgl.util.C;
 
@@ -347,7 +346,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     public static class Stat {
         private static final long serialVersionUID = 1L;
         private ON on;
-        private Long ttl = MqConfig.msg_default_alive_tims;   // Time To Live, 消息的存活时间,如果未成功发送,则最多存活一天
+        private Long ttl = MqConfig.msg_default_alive_time_second;   // Time To Live, 消息的存活时间,如果未成功发送,则最多存活一天
         private Long ctime; // create time
         private Long mtime; // modify time
         private int delay;  // 多次发送数(消息未ACKED,则delay多少秒后重发)

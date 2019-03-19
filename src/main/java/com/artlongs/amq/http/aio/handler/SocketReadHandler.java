@@ -39,10 +39,12 @@ public class SocketReadHandler implements CompletionHandler<Integer, ByteBuffer>
 			return;
 		}
         resolver.excute(buffer);
+		buffer.clear();
 	}
 	@Override
 	public void failed(Throwable ex, ByteBuffer attachment) {
 		logger.debug("write failed,maybe resource not exist. exception msg:{}",attachment.toString());
+		ex.printStackTrace();
 		closeConn();
 	}
 

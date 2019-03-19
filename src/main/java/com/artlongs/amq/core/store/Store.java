@@ -15,6 +15,7 @@ import org.osgl.util.S;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -102,6 +103,42 @@ public enum Store implements IStore {
         return list;
     }
 
+    public <T> List<T> list(String dbName,int pageNumber,int pageSize,Class<?> tClass) {
+        List<T> result = C.newList();
+        BTreeMap map = getMapBy(dbName);
+        Collection list = map.values();
+        int total = map.getSize();
+        int first = getFirst(pageNumber, pageSize);
+        int limit = limit(total, pageNumber, pageSize);
+        Iterator iter = list.iterator();
+        for (int i = first; i < limit; i++) {
+            result.add((T)((List) list).get(i));
+        }
+        return result;
+    }
+
+    private int getFirst(int pageNumber,int pageSize) {
+        pageNumber = pageNumber < 0 ? 1 : pageNumber;
+        return (pageNumber - 1) * pageSize;
+    }
+
+    private long getTotalPages(int total,int pageSize) {
+        if (total < 0) return 0;
+
+        long count = total / pageSize;
+        if (total % pageSize > 0) {
+            count++;
+        }
+        return count;
+    }
+
+    private int limit(int total, int pageNumber, int pageSize) {
+        if(pageNumber * pageSize > total){
+            return (total % pageSize);
+        }
+        return pageSize;
+    }
+
     @Override
     public void remove(String dbName, String key) {
         getMapBy(dbName).remove(key);
@@ -130,7 +167,6 @@ public enum Store implements IStore {
         System.err.println(Store.INST.<Message>get(IStore.mq_all_data,msg.getK().getId(), Message.class));
         System.err.println(Store.INST.<Message>getAll(IStore.mq_all_data, Message.class));
         System.err.println(Store.INST.<Message>find(IStore.mq_all_data,msg.getK().getTopic(),Message.class));
-
 
     }
 

@@ -21,7 +21,7 @@ import java.util.Iterator;
 /**
  * Created by ${leeton} on 2018/10/26.
  */
-public class NioHttpServer implements HttpServer {
+public class NioHttpServer  {
     private static Logger logger = LoggerFactory.getLogger(NioHttpServer.class);
     ServerSocketChannel socket;
     Selector selector = null;
@@ -31,7 +31,6 @@ public class NioHttpServer implements HttpServer {
         this.config = config;
     }
 
-    @Override
     public void start() {
         Thread t = new Thread(start0());
         t.setDaemon(true);
@@ -86,12 +85,10 @@ public class NioHttpServer implements HttpServer {
 
     }
 
-    @Override
     public void shutdown() {
 
     }
 
-    @Override
     public void stop() {
         try {
             if (selector != null && selector.isOpen()) {
@@ -105,37 +102,30 @@ public class NioHttpServer implements HttpServer {
         }
     }
 
-    @Override
     public void handler(HttpHandler httpHandler) {
 
     }
 
-    @Override
     public HttpHandler getHandler() {
         return null;
     }
 
-    @Override
     public HttpServerState getState() {
         return null;
     }
 
-    @Override
     public HttpServerConfig getConfig() {
         return null;
     }
 
-    @Override
     public HttpServer addController(Controller... controller) {
         return null;
     }
 
-    @Override
     public void writer(SocketWriteHandler writer) {
 
     }
 
-    @Override
     public SocketWriteHandler getWriter() {
         return null;
     }

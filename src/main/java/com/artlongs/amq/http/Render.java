@@ -38,12 +38,16 @@ public class Render<K, V> implements HttpHandler {
         resp.end();
     }
 
+    public static Render template(String url){
+        return template(url, C.newMap());
+    }
+
     public static <K, V> Render template(String url, C.Map<K, V> params) {
         Render result = null;
         result = new Render(url, params);
         result.data = read(url);
         result.fmt = Fmt.html;
-        System.err.println(new String(result.data));
+//        System.err.println(new String(result.data));
         params.clear();
         return result;
     }
@@ -53,7 +57,7 @@ public class Render<K, V> implements HttpHandler {
         result = new Render("", params);
         result.fmt = Fmt.json;
         result.data = JSON.toJSONBytes(params);
-        System.err.println(new String(result.data));
+//        System.err.println(new String(result.data));
         params.clear();
         return result;
     }

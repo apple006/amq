@@ -28,7 +28,7 @@ public class HttpResolver {
 		this.httpServer = httpServer;
 	}
 
-    public void excute(ByteBuffer data){
+    public synchronized void excute(ByteBuffer data){
 //		context.excute(write);
 		data.flip();
 		CharBuffer buffer = HttpServerConfig.charsets.decode(data);
