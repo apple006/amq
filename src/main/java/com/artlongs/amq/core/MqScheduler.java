@@ -29,15 +29,15 @@ public enum MqScheduler {
     public void start() {
         // 计时任务
         final ScheduledFuture<?> delaySend = scheduler.scheduleWithFixedDelay(
-                delaySendOnScheduled(), 5, MqConfig.msg_not_acked_resend_period, SECONDS);
+                delaySendOnScheduled(), MqConfig.msg_not_acked_resend_period, MqConfig.msg_not_acked_resend_period, SECONDS);
         final ScheduledFuture<?> retrySend = scheduler.scheduleWithFixedDelay(
-                retrySendOnScheduled(), 5, MqConfig.msg_falt_message_resend_period, SECONDS);
+                retrySendOnScheduled(), MqConfig.msg_falt_message_resend_period, MqConfig.msg_falt_message_resend_period, SECONDS);
         final ScheduledFuture<?> checkAlive = scheduler.scheduleWithFixedDelay(
-                checkAliveScheduled(), 1, MqConfig.msg_default_alive_time_second, SECONDS);
+                removeExpireMsgScheduled(), MqConfig.msg_default_alive_time_second, MqConfig.msg_default_alive_time_second, SECONDS);
 
 /*        TimeWheelService.instance.schedule(delaySendOnScheduled(), 5, MqConfig.msg_not_acked_resend_period, SECONDS);
         TimeWheelService.instance.schedule(retrySendOnScheduled(), 5, MqConfig.msg_falt_message_resend_period, SECONDS);
-        TimeWheelService.instance.schedule(checkAliveScheduled(), 1, MqConfig.msg_default_alive_time_second, SECONDS);*/
+        TimeWheelService.instance.schedule(removeExpireMsgScheduled(), 1, MqConfig.msg_default_alive_time_second, SECONDS);*/
     }
 
     /**
@@ -110,7 +110,7 @@ public enum MqScheduler {
      *
      * @return
      */
-    private Runnable checkAliveScheduled() {
+    private Runnable removeExpireMsgScheduled() {
         final Runnable retry = new Runnable() {
             @Override
             public void run() {

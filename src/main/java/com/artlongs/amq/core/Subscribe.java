@@ -1,8 +1,5 @@
 package com.artlongs.amq.core;
 
-import com.alibaba.fastjson.annotation.JSONField;
-import com.artlongs.amq.core.aio.AioPipe;
-
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -16,17 +13,16 @@ public class Subscribe implements Serializable {
 
     private String id;
     private String topic;
-    @JSONField(serialize = false, deserialize = false)
-    private AioPipe pipe;
+    private Integer pipeId;
     private Message.Life life;
     private Message.Listen listen;
     private long ctime;
     private int idx; // 在队列里的 index,记录下来,以加速remove
 
-    public Subscribe(String id, String topic, AioPipe pipe, Message.Life life,Message.Listen listen,long ctime) {
+    public Subscribe(String id, String topic, Integer pipeId, Message.Life life,Message.Listen listen,long ctime) {
         this.id = id;
         this.topic = topic;
-        this.pipe = pipe;
+        this.pipeId = pipeId;
         this.life = life;
         this.listen = listen;
         this.ctime = ctime;
@@ -38,12 +34,12 @@ public class Subscribe implements Serializable {
         if (o == null || getClass() != o.getClass()) return false;
         Subscribe subscribe = (Subscribe) o;
         return Objects.equals(topic, subscribe.topic) &&
-                Objects.equals(pipe, subscribe.pipe);
+                Objects.equals(pipeId, subscribe.pipeId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(topic, pipe);
+        return Objects.hash(topic, pipeId);
     }
 
     @Override
@@ -51,7 +47,7 @@ public class Subscribe implements Serializable {
         final StringBuilder sb = new StringBuilder("Subscribe{");
         sb.append("id='").append(id).append('\'');
         sb.append(", topic='").append(topic).append('\'');
-        sb.append(", pipe=").append(pipe);
+        sb.append(", pipeId=").append(pipeId);
         sb.append(", life=").append(life);
         sb.append(", listen=").append(listen);
         sb.append(", ctime=").append(ctime);
@@ -88,12 +84,12 @@ public class Subscribe implements Serializable {
         return this;
     }
 
-    public AioPipe getPipe() {
-        return pipe;
+    public Integer getPipeId() {
+        return pipeId;
     }
 
-    public Subscribe setPipe(AioPipe pipe) {
-        this.pipe = pipe;
+    public Subscribe setPipeId(Integer pipeId) {
+        this.pipeId = pipeId;
         return this;
     }
 

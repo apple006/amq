@@ -46,7 +46,7 @@ public class AioServer<T> implements Runnable{
     /**
      * 客户端存活列表,ConcurrentHashMap[PipeID,AioPipe]
      */
-    private ConcurrentHashMap<Integer, AioPipe> channelAliveMap = new ConcurrentHashMap<>(MqConfig.client_connect_thread_pool_size);
+    private static ConcurrentHashMap<Integer, AioPipe> channelAliveMap = new ConcurrentHashMap<>(MqConfig.client_connect_thread_pool_size);
 
     private boolean checkAlive = false;
 
@@ -150,7 +150,7 @@ public class AioServer<T> implements Runnable{
             pipe = aioPipeFunction.apply(channel);
             pipe.initSession();
             if (null != pipe) {
-                channelAliveMap.put(pipe.getId(),pipe);
+                channelAliveMap.putIfAbsent(pipe.getId(),pipe);
             }
         } catch (Exception e1) {
             LOGGER.debug(e1.getMessage(), e1);
@@ -187,6 +187,8 @@ public class AioServer<T> implements Runnable{
                 serverSocketChannel.close();
                 serverSocketChannel = null;
             }
+            channelAliveMap.clear();
+            channelAliveMap = null;
         } catch (IOException e) {
             LOGGER.warn(e.getMessage(), e);
         }
@@ -274,7 +276,8 @@ public class AioServer<T> implements Runnable{
         return this;
     }
 
-    public ConcurrentHashMap<Integer, AioPipe> getChannelAliveMap() {
+    public static ConcurrentHashMap<Integer, AioPipe> getChannelAliveMap() {
         return channelAliveMap;
     }
+
 }

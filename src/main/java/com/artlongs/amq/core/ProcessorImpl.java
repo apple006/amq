@@ -1,6 +1,7 @@
 package com.artlongs.amq.core;
 
 import com.artlongs.amq.core.aio.AioPipe;
+import com.artlongs.amq.core.aio.AioServer;
 import com.artlongs.amq.core.event.BizEventHandler;
 import com.artlongs.amq.core.event.JobEvent;
 import com.artlongs.amq.core.event.JobEvnetHandler;
@@ -13,15 +14,12 @@ import com.artlongs.amq.disruptor.dsl.ProducerType;
 import com.artlongs.amq.disruptor.util.DaemonThreadFactory;
 import com.artlongs.amq.tools.FastList;
 import com.artlongs.amq.tools.RingBufferQueue;
-import com.artlongs.amq.tools.TimeWheelService;
 import org.osgl.util.C;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.*;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Func : 消息处理中心
@@ -116,7 +114,9 @@ public enum ProcessorImpl implements Processor {
     public void onMessage(AioPipe pipe, Message message) {
         if (null != message) {
             if (MqConfig.store_all_message_to_db) { // 持久化所有消息
-                tiggerStoreAllMsgToDb(persistent_worker, message);
+                if(!message.subscribeTF()){
+                    tiggerStoreAllMsgToDb(persistent_worker, message);
+                }
             }
             String msgId = message.getK().getId();
             if (message.ackMsgTF()) { // ACK 消息
@@ -201,7 +201,7 @@ public enum ProcessorImpl implements Processor {
     private boolean addSubscribeIF(AioPipe pipe, Message message) {
         if (message.subscribeTF()) {
             String clientKey = message.getK().getId();
-            Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), pipe, message.getLife(), message.getListen(),System.currentTimeMillis());
+            Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), pipe.getId(), message.getLife(), message.getListen(),System.currentTimeMillis());
             RingBufferQueue.Result result = cache_subscribe.putIfAbsent(listen);
             if (result.success) {
                 listen.setIdx(result.index);
@@ -237,9 +237,11 @@ public enum ProcessorImpl implements Processor {
     private boolean buildSubscribeWaitingJobResult(AioPipe pipe, Message message) {
         String jobId = message.getK().getId();
         String jobTopc = Message.buildFinishJobTopic(jobId, message.getK().getTopic());
-        Subscribe subscribe = new Subscribe(jobId, jobTopc, pipe, message.getLife(), message.getListen(),System.currentTimeMillis());
+        Subscribe subscribe = new Subscribe(jobId, jobTopc, pipe.getId(), message.getLife(), message.getListen(),System.currentTimeMillis());
         RingBufferQueue.Result result = cache_subscribe.putIfAbsent(subscribe);
-        subscribe.setIdx(result.index);
+        if (result.success) {
+            subscribe.setIdx(result.index);
+        }
         return true;
     }
 
@@ -291,7 +293,7 @@ public enum ProcessorImpl implements Processor {
         //追加订阅者的消息ID及状态
         changeMessageOnReply(subscribe, message);
         // 发送消息给订阅方
-        boolean writed = subscribe.getPipe().write(message);
+        boolean writed = getPipeBy(subscribe.getPipeId()).write(message);
         if (writed) {
             onSendSuccToPrcess(subscribe, message);
         } else {
@@ -337,9 +339,14 @@ public enum ProcessorImpl implements Processor {
      */
     private boolean isPipeClosedThenRemove(Subscribe subscribe) {
         try {
-            if (subscribe.getPipe().isInvalid()) {
+            if(null == subscribe.getPipeId()){
                 cache_subscribe.remove(subscribe.getIdx());
-                logger.warn("remove subscribe on pipe ({}) is CLOSED.", subscribe.getPipe().getId());
+                logger.warn("remove subscribe when pipeId is null ." + subscribe);
+                return true;
+            }
+            if (getPipeBy(subscribe.getPipeId()).isInvalid()) {
+                cache_subscribe.remove(subscribe.getIdx());
+                logger.warn("remove subscribe on pipe ({}) is CLOSED.", subscribe.getPipeId());
                 return true;
             }
         } catch (Exception e) {
@@ -359,7 +366,7 @@ public enum ProcessorImpl implements Processor {
         Set<Integer> comfirmList = message.getStat().getNodesConfirmed();
         if (C.notEmpty(comfirmList)) {
             for (Integer confirm : comfirmList) {
-                if (confirm.equals(subscribe.getPipe().getId())) return true;
+                if (confirm.equals(subscribe.getPipeId())) return true;
             }
         }
         return false;
@@ -374,7 +381,7 @@ public enum ProcessorImpl implements Processor {
     }
 
     private void onSendSuccToPrcess(Subscribe listen, Message message) {
-        message.upStatOfSended(listen.getPipe().getId());
+        message.upStatOfSended(listen.getPipeId());
         if (Message.Life.SPARK == listen.getLife()) {
             removeSubscribeOfCache(listen);
         }
@@ -455,7 +462,7 @@ public enum ProcessorImpl implements Processor {
         String topic = acceptor.getK().getTopic();
         Message job = matchPublishJob(topic);
         if (null != job) {
-            Subscribe subscribe = new Subscribe(acceptor.getK().getId(), topic, pipe, acceptor.getLife(), acceptor.getListen(),System.currentTimeMillis());
+            Subscribe subscribe = new Subscribe(acceptor.getK().getId(), topic, pipe.getId(), acceptor.getLife(), acceptor.getListen(),System.currentTimeMillis());
             sendMessageToSubcribe(job, subscribe);
         }
     }
@@ -474,6 +481,11 @@ public enum ProcessorImpl implements Processor {
         }
         return null;
     }
+
+    private AioPipe getPipeBy(Integer pipeId){
+       return AioServer.getChannelAliveMap().get(pipeId);
+    }
+
 
     @Override
     public void shutdown() {
