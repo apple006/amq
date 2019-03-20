@@ -26,7 +26,7 @@ import java.util.stream.Stream;
  */
 public class Router implements HttpHandler {
     private static Logger logger = LoggerFactory.getLogger(Router.class);
-    private final Map<String, List<Route>> routes = new HashMap<>();
+    private static final Map<String, List<Route>> routes = new HashMap<>();
 
     /**
      * Constructs a new {@code Router} converting the methods annotated with {@code Get}, {@code Post}, and {@code Delete} to routes.

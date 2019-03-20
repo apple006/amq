@@ -1,4 +1,4 @@
-package com.artlongs.amq.ideas;
+package com.artlongs.amq.thinking;
 
 import com.artlongs.amq.core.MqConfig;
 import com.artlongs.amq.serializer.FastJsonSerializer;

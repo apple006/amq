@@ -9,5 +9,4 @@ package com.artlongs.amq.http.routes;
  * @since 1.0
  */
 public interface Controller {
-
 }

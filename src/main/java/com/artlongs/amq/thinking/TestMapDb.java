@@ -1,4 +1,4 @@
-package com.artlongs.amq.ideas;
+package com.artlongs.amq.thinking;
 
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;

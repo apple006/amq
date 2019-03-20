@@ -1,7 +1,7 @@
 package com.artlongs.amq.http;
 
 import com.alibaba.fastjson.JSON;
-import org.osgl.util.C;
+import com.artlongs.amq.http.routes.Controller;
 
 import java.io.File;
 import java.io.IOException;
@@ -10,22 +10,21 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
 
 /**
  * Func :
  *
  * @author: leeton on 2019/3/12.
  */
-public class Render<K, V> implements HttpHandler {
+public class Render<T> implements HttpHandler,Controller {
 
     private byte[] data;
     private String templateUrl;
-    private Map<K, V> params;
+    private T params;
     private Fmt fmt;
 
 
-    public Render(String templateUrl, Map<K, V> params) {
+    public Render(String templateUrl, T params) {
         this.templateUrl = templateUrl;
         this.params = params;
     }
@@ -39,24 +38,24 @@ public class Render<K, V> implements HttpHandler {
     }
 
     public static Render template(String url){
-        return template(url, C.newMap());
+        return template(url, null);
     }
 
-    public static <K, V> Render template(String url, C.Map<K, V> params) {
+    public static <T> Render template(String url, T params) {
         Render result = new Render(url, params);
         result.data = read(url);
         result.fmt = Fmt.html;
 //        System.err.println(new String(result.data));
-        params.clear();
+        params = null;
         return result;
     }
 
-    public static <K, V> Render json(Map<K, V> params) {
+    public static <T> Render json(T params) {
         Render result = new Render("", params);
         result.fmt = Fmt.json;
         result.data = JSON.toJSONBytes(params);
 //        System.err.println(new String(result.data));
-        params.clear();
+        params = null;
         return result;
     }
 

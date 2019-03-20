@@ -53,7 +53,11 @@ public class AioMqServer {
 
     public void startAdmin(){
         if (MqConfig.start_mq_admin) {
-            AioHttpServer.instance.start();
+            httpServer = AioHttpServer.instance;
+//            HttpProcessor processor = httpServer.getHttpProcessor();
+//            processor.addController(new QueryController().getControllers());
+            httpServer.start();
+
         }
     }
 

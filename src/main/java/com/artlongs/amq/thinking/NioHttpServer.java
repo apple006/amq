@@ -1,4 +1,4 @@
-package com.artlongs.amq.http.nio;
+package com.artlongs.amq.thinking;
 
 import com.artlongs.amq.http.HttpHandler;
 import com.artlongs.amq.http.HttpServer;
