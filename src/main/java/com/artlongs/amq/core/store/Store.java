@@ -3,7 +3,7 @@ package com.artlongs.amq.core.store;
 import com.artlongs.amq.core.Message;
 import com.artlongs.amq.core.MqConfig;
 import com.artlongs.amq.core.Subscribe;
-import com.artlongs.amq.serializer.FastJsonSerializer;
+import com.artlongs.amq.serializer.ISerializer;
 import com.artlongs.amq.tools.ID;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
@@ -25,7 +25,7 @@ import java.util.List;
  */
 public enum Store implements IStore {
     INST;
-    private FastJsonSerializer serializer = new FastJsonSerializer();
+    ISerializer serializer = ISerializer.Serializer.INST.of();
 
     private HashMap<String, DB> db = new HashMap<>();
     // MQ 收到的所有数据
@@ -85,20 +85,22 @@ public enum Store implements IStore {
     }
 
     @Override
-    public <T> T get(String dbName, String key,Class<?> tClass) {
+    public <T> T get(String dbName, String key,Class<T> tClass) {
         byte[] bytes = (byte[]) getMapBy(dbName).get(key);
         if (bytes != null) {
-            T obj = serializer.getObj(bytes,tClass);
-            return obj;
+            // todo
+//            T obj = serializer.getObj(bytes,tClass);
+//            return obj;
         }
         return null;
     }
 
     @Override
-    public <T> List<T> getAll(String dbName,Class<?> tClass) {
+    public <T> List<T> getAll(String dbName,Class<T> tClass) {
         List<T> list = C.newList();
         for (Object o : getMapBy(dbName).values()) {
-            list.add(serializer.getObj((byte[]) o,tClass));
+            //todo
+           // list.add(serializer.getObj((byte[]) o,tClass));
         }
         return list;
     }
@@ -146,17 +148,18 @@ public enum Store implements IStore {
     }
 
     @Override
-    public <T> List<T> find(String dbName, String topic,Class<?> tClass) {
+    public <T> List<T> find(String dbName, String topic,Class<T> tClass) {
         BTreeMap map = getMapBy(dbName);
         List<T> list = C.newList();
         for (Object o : map.values()) {
-            T obj = serializer.getObj((byte[])o,tClass);
+            //todo
+     /*       T obj = serializer.getObj((byte[])o,tClass);
             if (obj instanceof Message) {
                 if(((Message)obj).getK().getTopic().startsWith(topic)) list.add(obj);
             }
             if (obj instanceof Subscribe) {
                 if(((Subscribe)obj).getTopic().startsWith(topic)) list.add(obj);
-            }
+            }*/
         }
         return list;
     }

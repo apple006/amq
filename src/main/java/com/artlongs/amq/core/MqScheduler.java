@@ -49,30 +49,34 @@ public enum MqScheduler {
         final Runnable delay = new Runnable() {
             @Override
             public void run() {
-                RingBufferQueue<Subscribe> cache_subscribe = ProcessorImpl.INST.getCache_subscribe();
-                if (cache_subscribe.empty()) { // 从 DB 恢复所有订阅
-                    final List<Subscribe> retryList = Store.INST.getAll(IStore.mq_subscribe, Subscribe.class);
-                    for (Subscribe o : retryList) {
-                        cache_subscribe.put(o);
-                    }
-                }
+                if (MqConfig.start_msg_not_acked_resend) {
 
-                ConcurrentSkipListMap<String, Message> cache_common_publish_message = ProcessorImpl.INST.getCache_common_publish_message();
-                if (C.isEmpty(cache_common_publish_message)) { //  从 DB 恢复所有未确认的消息
-                    final List<Message> retryList = Store.INST.getAll(IStore.mq_all_data, Message.class);
-                    for (Message o : retryList) {
-                        cache_common_publish_message.put(o.getK().getId(), o);
+                    RingBufferQueue<Subscribe> cache_subscribe = ProcessorImpl.INST.getCache_subscribe();
+                    if (cache_subscribe.empty()) { // 从 DB 恢复所有订阅
+                        final List<Subscribe> retryList = Store.INST.getAll(IStore.mq_subscribe, Subscribe.class);
+                        for (Subscribe o : retryList) {
+                            cache_subscribe.putIfAbsent(o);
+                        }
                     }
-                }
 
-                for (Message message : cache_common_publish_message.values()) {
-                    if (MqConfig.msg_not_acked_resend_max_times > message.getStat().getDelay()) {
-                        logger.warn("The scheduler task is running delay-send message !");
-                        message.incrDelay();
-                        ProcessorImpl.INST.pulishJobEvent(message);
+                    ConcurrentSkipListMap<String, Message> cache_common_publish_message = ProcessorImpl.INST.getCache_common_publish_message();
+                    if (C.isEmpty(cache_common_publish_message)) { //  从 DB 恢复所有未确认的消息
+                        final List<Message> retryList = Store.INST.getAll(IStore.mq_all_data, Message.class);
+                        for (Message o : retryList) {
+                            cache_common_publish_message.putIfAbsent(o.getK().getId(), o);
+                        }
+                    }
+
+                    for (Message message : cache_common_publish_message.values()) {
+                        if (MqConfig.msg_not_acked_resend_max_times > message.getStat().getDelay()) {
+                            logger.warn("The scheduler task is running delay-send message({})! " , message.getK().getId());
+                            message.incrDelay();
+                            ProcessorImpl.INST.pulishJobEvent(message);
+                        }
                     }
                 }
             }
+
         };
         return delay;
     }
@@ -86,18 +90,20 @@ public enum MqScheduler {
         final Runnable retry = new Runnable() {
             @Override
             public void run() {
-                ConcurrentSkipListMap<String, Message> cache_falt_message = ProcessorImpl.INST.getCache_falt_message();
-                if (C.isEmpty(cache_falt_message)) {
-                    final List<Message> retryList = Store.INST.getAll(IStore.mq_need_retry, Message.class);
-                    for (Message o : retryList) {
-                        cache_falt_message.put(o.getK().getId(), o);
+                if (MqConfig.onoff_msg_falt_message_resendf) {
+                    ConcurrentSkipListMap<String, Message> cache_falt_message = ProcessorImpl.INST.getCache_falt_message();
+                    if (C.isEmpty(cache_falt_message)) {
+                        final List<Message> retryList = Store.INST.getAll(IStore.mq_need_retry, Message.class);
+                        for (Message o : retryList) {
+                            cache_falt_message.putIfAbsent(o.getK().getId(), o);
+                        }
                     }
-                }
-                for (Message message : cache_falt_message.values()) {
-                    if (MqConfig.msg_falt_message_resend_max_times > message.getStat().getRetry()) {
-                        logger.warn("The scheduler task is running retry-send message !");
-                        message.incrRetry();
-                        ProcessorImpl.INST.pulishJobEvent(message);
+                    for (Message message : cache_falt_message.values()) {
+                        if (MqConfig.msg_falt_message_resend_max_times > message.getStat().getRetry()) {
+                            logger.warn("The scheduler task is running retry-send message ({})!",message.getK().getId());
+                            message.incrRetry();
+                            ProcessorImpl.INST.pulishJobEvent(message);
+                        }
                     }
                 }
             }

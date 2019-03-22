@@ -1,7 +1,6 @@
 package com.artlongs.amq.tester;
 
 import com.artlongs.amq.core.*;
-import com.artlongs.amq.serializer.FastJsonSerializer;
 
 import java.io.IOException;
 import java.nio.channels.AsynchronousChannelGroup;
@@ -32,7 +31,7 @@ public class TestPong {
         client.start(asynchronousChannelGroup);
         //
 
-        FastJsonSerializer.User user = new FastJsonSerializer.User(2, "alice");
+        TestUser user = new TestUser(2, "alice");
         String jobTopc = "topic_get_userById";
         processor.acceptJob(jobTopc, (m)->{
             if (m != null) {
@@ -40,7 +39,7 @@ public class TestPong {
                 System.err.println(job);
                 // 完成任务 JOB
                 if (user.getId().equals(job.getV())) {
-                    processor.<FastJsonSerializer.User>finishJob(jobTopc, user,job);
+                    processor.<TestUser>finishJob(jobTopc, user,job);
                 }
             }
         });

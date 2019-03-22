@@ -1,22 +1,26 @@
 package com.artlongs.amq.serializer;
 
 
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 
 public interface ISerializer {
 
-    public byte[] toByte(Object obj);
-    public <T extends Serializable> T getObj(byte[] bytes);
-    public <T extends Serializable> T getObj(byte[] bytes,Class<?> clzz);
-    public <T extends Serializable> T getObj(ByteBuffer byteBuffer);
-    public <T extends Serializable> T getObj(ByteBuffer byteBuffer, Class<T> clzz);
+    public <T> byte[] toByte(T obj);
+
+    public <T> T getObj(byte[] bytes);
+
+    public <T> T getObj(byte[] bytes, Class<T> clzz);
+
+    public <T> T getObj(ByteBuffer buffer);
+
+    public <T> T getObj(ByteBuffer buffer, Class<T> clzz);
 
 
-    enum Serializer{
+    enum Serializer {
         INST;
-        public ISerializer of(){
-            return new FastJsonSerializer();
+
+        public ISerializer of() {
+            return Fst.inst;
         }
     }
 }

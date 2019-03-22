@@ -33,10 +33,13 @@ public class MqConfig {
 	public static int connect_timeout = 3;
 	public static int clinet_send_max = 30;
 
-	// 间隔x秒,重发消息如果消息没有确认收到
 	public static int msg_not_acked_resend_period = 10;
+	// 间隔x秒,重发消息如果消息没有确认收到
+	public static boolean start_msg_not_acked_resend = false;
 	// 消息未确认的消息重发的最大次数
 	public static int msg_not_acked_resend_max_times = 0;
+
+	public static boolean onoff_msg_falt_message_resendf = false;
 	// 间隔x秒,发送失败的消息重发间隔
 	public static int msg_falt_message_resend_period = 60;
 	//发送失败的消息重发的最大次数
@@ -49,16 +52,18 @@ public class MqConfig {
 	public static boolean mq_auto_acked = true;
 
 	// 保存所有的消息(持久化)
-	public static boolean store_all_message_to_db = true;
+	public static boolean start_store_all_message_to_db = false;
 	//  消息的默认存活时间(秒)
 	public static long msg_default_alive_time_second = 86400;
 
 	// 启动客户端心跳检测
 	public static boolean start_check_client_alive = true;
 	// 启动流量显示
-	public static boolean start_flow_monitor= true;
+	public static boolean start_flow_monitor = true;
 	// 启动 MQ 后台管理系统
 	public static boolean start_mq_admin= true;
+	// 启动 MQ 用安全队列方式去发布消息
+	public static boolean start_mq_publish_of_safe_queue = true;
 
 	//========================== DB ITME =====================================
 	// MAPDB 数据库文件

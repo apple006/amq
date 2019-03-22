@@ -3,8 +3,11 @@ package com.artlongs.amq.core;
 import com.artlongs.amq.core.aio.AioBaseProcessor;
 import com.artlongs.amq.core.aio.AioPipe;
 import com.artlongs.amq.core.aio.State;
+import com.artlongs.amq.serializer.ISerializer;
+import com.artlongs.amq.tools.IOUtils;
 import org.osgl.util.C;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,24 +17,36 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @author: leeton on 2019/2/25.
  */
-public class MqClientProcessor extends AioBaseProcessor<Message> implements MqClientAction {
+public class MqClientProcessor extends AioBaseProcessor<ByteBuffer> implements MqClientAction {
 
-    private AioPipe<Message> pipe;
+    private AioPipe<ByteBuffer> pipe;
+
+    /**
+     * 客户端返回的消息包装
+     */
     private static Map<String, Call> callBackMap = new ConcurrentHashMap<>();
     /**
      * 客户端返回的消息包装
      */
     private static Map<String, CompletableFuture<Message>> futureResultMap = new ConcurrentHashMap<>();
+    //
+    ISerializer serializer = ISerializer.Serializer.INST.of();
 
     @Override
-    public void process0(AioPipe<Message> pipe, Message msg) {
-        System.err.println(" Client,收到消息: ");
-        String subscribeId = msg.getSubscribeId();
-        if(C.notEmpty(callBackMap) && null != callBackMap.get(subscribeId)){
-            callBackMap.get(subscribeId).back(msg);
-        }
-        if(C.notEmpty(futureResultMap) && null != futureResultMap.get(subscribeId)){
-            futureResultMap.get(subscribeId).complete(msg);
+    public void process0(AioPipe<ByteBuffer> pipe, ByteBuffer buffer) {
+        try {
+            Message message = serializer.getObj(buffer);
+            if (null != message) {
+                String subscribeId = message.getSubscribeId();
+                if (C.notEmpty(callBackMap) && null != callBackMap.get(subscribeId)) {
+                    callBackMap.get(subscribeId).back(message);
+                }
+                if (C.notEmpty(futureResultMap) && null != futureResultMap.get(subscribeId)) {
+                    futureResultMap.get(subscribeId).complete(message);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -43,7 +58,7 @@ public class MqClientProcessor extends AioBaseProcessor<Message> implements MqCl
     @Override
     public <V> void subscribe(String topic, V v, Call callBack) {
         Message subscribe = Message.buildSubscribe(topic, v, getNode(), Message.Life.ALL_ACKED, Message.Listen.CALLBACK);
-        this.pipe.write(subscribe);
+        write(subscribe);
         callBackMap.put(subscribe.getSubscribeId(), callBack);
     }
 
@@ -53,7 +68,7 @@ public class MqClientProcessor extends AioBaseProcessor<Message> implements MqCl
         String jobId = job.getK().getId();
         // 发布一个 future ,等任务完成后读取结果.
         futureResultMap.put(jobId, new CompletableFuture<Message>());
-        this.pipe.write(job);
+        write(job);
         Message result = futureResultMap.get(jobId).join();
         if (null != result) {
             removeFutureResultMap(result.getSubscribeId());
@@ -66,17 +81,16 @@ public class MqClientProcessor extends AioBaseProcessor<Message> implements MqCl
     }
 
     @Override
-    public void acceptJob(String topic,Call acceptJobThenExecute) {
+    public void acceptJob(String topic, Call acceptJobThenExecute) {
         Message subscribe = Message.buildAcceptJob(topic, getNode());
-        this.pipe.write(subscribe);
+        write(subscribe);
         callBackMap.put(subscribe.getSubscribeId(), acceptJobThenExecute);
     }
 
     public <V> boolean finishJob(String topic, V v, Message acceptJob) {
         try {
-            Message<Message.Key,V> finishJob = Message.buildFinishJob(acceptJob.getK().getId(), topic, v, getNode());
-            this.pipe.write(finishJob);
-            return true;
+            Message<Message.Key, V> finishJob = Message.buildFinishJob(acceptJob.getK().getId(), topic, v, getNode());
+            return write(finishJob);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -86,8 +100,8 @@ public class MqClientProcessor extends AioBaseProcessor<Message> implements MqCl
     @Override
     public <M> boolean onlyPublish(String topic, M data) {
         try {
-            this.pipe.write(Message.buildCommonMessage(topic, data, getNode()));
-            return true;
+            Message message = Message.buildCommonMessage(topic, data, getNode());
+            return write(message);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -97,16 +111,15 @@ public class MqClientProcessor extends AioBaseProcessor<Message> implements MqCl
     @Override
     public boolean ack(String messageId, Message.Life life) {
         Message message = Message.buildAck(messageId, life);
-        pipe.write(message);
-        return false;
+        return write(message);
     }
 
-    private Integer getNode() {
-        return this.pipe.getId();
+    private boolean write(Message obj) {
+        return this.pipe.write(IOUtils.wrap(obj));
     }
 
-     @Override
-    public void stateEvent0(AioPipe<Message> pipe, State state, Throwable throwable) {
+    @Override
+    public void stateEvent0(AioPipe<ByteBuffer> pipe, State state, Throwable throwable) {
         switch (state) {
             case NEW_PIPE:
                 this.pipe = pipe;
@@ -125,9 +138,9 @@ public class MqClientProcessor extends AioBaseProcessor<Message> implements MqCl
         callBackMap.remove(key);
     }
 
-
-
-
+    private Integer getNode() {
+        return this.pipe.getId();
+    }
 
 
 }

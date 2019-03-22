@@ -14,9 +14,6 @@ import java.util.Set;
 public class Message<K extends Message.Key, V> implements KV<K, V> {
     private static final long serialVersionUID = 1L;
 
-    protected Message() {
-    }
-
     ////=============================================
     private Key k;
     private V v; // centent body
@@ -288,13 +285,12 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
     public static class Key implements Serializable {
         private static final long serialVersionUID = 1L;
-
-        private Key() {
-        }
-
         private String id;
         private String topic;
         private Integer sendNode;  //发布者节点 (pipeId)
+
+        public Key() {
+        }
 
         public Key(String id, String topic) {
             this.id = id;
@@ -343,7 +339,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
     }
 
     //====================================    Message Stat   ====================================
-    public static class Stat {
+    public static class Stat implements Serializable {
         private static final long serialVersionUID = 1L;
         private ON on;
         private Long ttl = MqConfig.msg_default_alive_time_second;   // Time To Live, 消息的存活时间,如果未成功发送,则最多存活一天

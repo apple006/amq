@@ -1,0 +1,22 @@
+package com.artlongs.amq.tester;
+
+import java.io.Serializable;
+
+/**
+ * Func :
+ *
+ * @author: leeton on 2019/3/22.
+ */
+public class TestUser implements Serializable {
+    private Integer id;
+    private String name;
+
+    public TestUser(Integer id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+}

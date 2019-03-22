@@ -3,6 +3,7 @@ package com.artlongs.amq.core;
 import com.artlongs.amq.core.aio.AioPipe;
 import com.artlongs.amq.tools.FastList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -12,6 +13,7 @@ import java.util.List;
  */
 public interface Processor {
 
+    public void onMessage(AioPipe pipe, ByteBuffer buffer);
     /**
      * 收到消息的逻辑处理
      * @param pipe

@@ -1,7 +1,6 @@
 package com.artlongs.amq.thinking;
 
 import com.artlongs.amq.core.MqConfig;
-import com.artlongs.amq.serializer.FastJsonSerializer;
 import com.artlongs.amq.tools.IOUtils;
 
 import java.io.IOException;
@@ -22,7 +21,6 @@ public class NioClient {
     //管道管理器
     private Selector selector;
     private SocketChannel channel;
-    private FastJsonSerializer json = new FastJsonSerializer();
 
     public NioClient(String serverIp, int port) throws IOException {
         //获取socket通道

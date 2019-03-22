@@ -378,8 +378,8 @@ public class ConcurrentBag<T extends ConcurrentBag.IConcurrentBagEntry> implemen
    private boolean useWeakThreadLocals()
    {
       try {
-         if (System.getProperty("com.zaxxer.hikari.useWeakReferences") != null) {   // undocumented manual override of WeakReference behavior
-            return Boolean.getBoolean("com.zaxxer.hikari.useWeakReferences");
+         if (System.getProperty("com.artlongs.amq.tools.useWeakReferences") != null) {   // undocumented manual override of WeakReference behavior
+            return Boolean.getBoolean("com.artlongs.amq.tools.useWeakReferences");
          }
 
          return getClass().getClassLoader() != ClassLoader.getSystemClassLoader();

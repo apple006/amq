@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
  * @author: leeton on 2019/2/22.
  */
 public interface Protocol<T> {
-    ByteBuffer encode(T message);
+    ByteBuffer encode(T obj);
     T decode(final ByteBuffer buffer);
 
 

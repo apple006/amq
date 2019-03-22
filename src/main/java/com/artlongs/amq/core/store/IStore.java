@@ -48,9 +48,9 @@ public interface IStore {
 
     <T> boolean save(String dbName,String key, T obj);
 
-    <T> T get(String dbName,String key,Class<?> tClass);
+    <T> T get(String dbName,String key,Class<T> tClass);
 
-    <T> List<T> getAll(String dbName,Class<?> tClass);
+    <T> List<T> getAll(String dbName,Class<T> tClass);
 
     void remove(String dbName,String key);
 
@@ -61,7 +61,7 @@ public interface IStore {
      * @param <T>    存储的对象类型
      * @return
      */
-    <T> List<T> find(String dbName, String topic,Class<?> tClass);
+    <T> List<T> find(String dbName, String topic,Class<T> tClass);
 
 
 }

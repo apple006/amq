@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -29,7 +30,7 @@ public class AioMqServer {
 
     public void start() {
         try {
-            AioServer<Message> aioServer = new AioServer<>(MqConfig.host, MqConfig.port, new MqProtocol(), new MqServerProcessor());
+            AioServer<ByteBuffer> aioServer = new AioServer<>(MqConfig.host, MqConfig.port, new MqProtocol(), new MqServerProcessor());
             aioServer.startCheckAlive(MqConfig.start_check_client_alive);
             aioServer.startMonitorPlugin(MqConfig.start_flow_monitor);
             //

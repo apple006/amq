@@ -21,20 +21,22 @@ public class StoreEventHandler implements WorkHandler<JobEvent> {
         Message message = event.getMessage();
         if (message != null && Message.Type.ACK == message.getType()) return; // 签收的消息,没必要保存
 
-        logger.debug("[S]执行消息保存到硬盘 ......");
         if(event.isStoreAllMsg()){ // 开启了保存所有消息
             if (message != null) {
+                logger.debug("[S]执行消息保存到硬盘(ALL) ......");
                 Store.INST.save(IStore.mq_all_data, message.getK().getId(), message);
             }
         }else {
             if (message != null) {
                 String dbName = getDbNameByMsgType(message);
                 if (S.noBlank(dbName)) {
+                    logger.debug("[S]执行消息保存到硬盘({}).",dbName);
                     Store.INST.save(dbName,message.getK().getId(), message);
                 }
             }
             Subscribe subscribe = event.getSubscribe();
             if (subscribe != null) {
+                logger.debug("[S]执行消息保存到硬盘(subscribe) ......");
                 Store.INST.save(IStore.mq_subscribe,subscribe.getId(), subscribe);
             }
         }

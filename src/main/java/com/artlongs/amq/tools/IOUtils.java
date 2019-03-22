@@ -1,6 +1,7 @@
 package com.artlongs.amq.tools;
 
 import com.artlongs.amq.core.MqConfig;
+import com.artlongs.amq.core.aio.DirectBufferUtil;
 import com.artlongs.amq.serializer.ISerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,18 @@ public class IOUtils {
         if (null != bytes) {
             logger.info("[REC]:" + new String(bytes));
         }
+    }
+
+    public static ByteBuffer wrap(byte[] bytes) {
+        ByteBuffer buffer = DirectBufferUtil.allocateDirectBuffer(bytes.length);
+        buffer.put(bytes);
+        buffer.flip();
+        return buffer;
+    }
+
+    public static ByteBuffer wrap(Object obj) {
+        byte[] bytes = serializer.toByte(obj);
+        return wrap(bytes);
     }
 
     /**

@@ -33,11 +33,12 @@ public class TestSend {
         client.start();
 
         long s = System.currentTimeMillis();
-        for (int i = 0; i < 10000; i++) {
-            processor.onlyPublish("topic_hello", "hello linton,times:"+i);
-            Thread.sleep(50);
+        for (int i = 0; i < 100; i++) {
+            TestUser user = new TestUser(i, "alice");
+            processor.onlyPublish("topic_hello", user);
+            Thread.sleep(1,500);
         }
-        System.err.println("Time:"+(System.currentTimeMillis()-s)/1000);
+        System.err.println("Time(ms):"+(System.currentTimeMillis()-s));
 
     }
 

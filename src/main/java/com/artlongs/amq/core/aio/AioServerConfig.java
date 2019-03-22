@@ -37,7 +37,7 @@ public class AioServerConfig<T> {
     /**
      * 消息体缓存大小,字节
      */
-    private int dirctBufferSize = 8192;
+    private int dirctBufferSize = 2048;
 
     /**
      * 服务器处理线程数

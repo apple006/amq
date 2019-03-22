@@ -23,14 +23,17 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
             }
             aioPipe.readSemaphore.release();
             aioPipe.readFromChannel(size == -1);
+//            System.err.println("read is completed" );
         } catch (Exception e) {
             failed(e, aioPipe);
+        }finally {
+            aioPipe.readSemaphore.release();
         }
     }
 
     @Override
     public void failed(Throwable exc, AioPipe<T> aioPipe) {
-
+        whenErrDoWaiting();
         try {
             aioPipe.getServerConfig().getProcessor().stateEvent(aioPipe, State.INPUT_EXCEPTION, exc);
         } catch (Exception e) {
@@ -40,6 +43,13 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
             aioPipe.close();
         } catch (Exception e) {
             LOGGER.error(e.getMessage(), e);
+        }
+    }
+    private void whenErrDoWaiting(){
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 }

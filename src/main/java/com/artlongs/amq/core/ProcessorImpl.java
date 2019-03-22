@@ -12,14 +12,21 @@ import com.artlongs.amq.disruptor.*;
 import com.artlongs.amq.disruptor.dsl.Disruptor;
 import com.artlongs.amq.disruptor.dsl.ProducerType;
 import com.artlongs.amq.disruptor.util.DaemonThreadFactory;
+import com.artlongs.amq.serializer.ISerializer;
 import com.artlongs.amq.tools.FastList;
+import com.artlongs.amq.tools.IOUtils;
 import com.artlongs.amq.tools.RingBufferQueue;
 import org.osgl.util.C;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Func : 消息处理中心
@@ -30,16 +37,24 @@ public enum ProcessorImpl implements Processor {
     INST;
     private static Logger logger = LoggerFactory.getLogger(ProcessorImpl.class);
 
-    /** 从客户端读取到的数据缓存(普通publish消息) map(messageId,Message) */
+    /**
+     * 从客户端读取到的数据缓存(普通publish消息) map(messageId,Message)
+     */
     private ConcurrentSkipListMap<String, Message> cache_common_publish_message = new ConcurrentSkipListMap();
 
-    /** 发送失败的消息数据缓存 map(messageId,Message) */
+    /**
+     * 发送失败的消息数据缓存 map(messageId,Message)
+     */
     private ConcurrentSkipListMap<String, Message> cache_falt_message = new ConcurrentSkipListMap();
 
-    /** 发布的工作任务缓存 **/
+    /**
+     * 发布的工作任务缓存
+     **/
     private ConcurrentSkipListMap<String, Message> cache_public_job = new ConcurrentSkipListMap();
 
-    /** 客户端订阅的缓存 RingBufferQueue(Subscribe) */
+    /**
+     * 客户端订阅的缓存 RingBufferQueue(Subscribe)
+     */
     private RingBufferQueue<Subscribe> cache_subscribe = new RingBufferQueue<>(MqConfig.mq_cache_map_sizes);
 
     // ringBuffer cap setting
@@ -59,6 +74,8 @@ public enum ProcessorImpl implements Processor {
     private WorkerPool<JobEvent> persistent_worker_pool = null;
     ExecutorService bizExecutor = null;
     ExecutorService storeExecutor = null;
+    ISerializer serializer = ISerializer.Serializer.INST.of();
+    LinkedBlockingQueue<QueueItem> publishQueue = new LinkedBlockingQueue(10000);
 
     public ProcessorImpl me() {
         return this;
@@ -90,7 +107,7 @@ public enum ProcessorImpl implements Processor {
                         WORKER_BUFFER_SIZE,
                         DaemonThreadFactory.INSTANCE,
                         ProducerType.SINGLE,
-                        new SleepingWaitStrategy());
+                        new BlockingWaitStrategy());
         disruptor.handleEventsWith(jobEvnetHandler);
         return disruptor;
     }
@@ -110,11 +127,28 @@ public enum ProcessorImpl implements Processor {
 
     }
 
+    public void onMessage(AioPipe pipe, ByteBuffer buffer) {
+        waitOnPublish();
+        if (MqConfig.start_mq_publish_of_safe_queue) {
+            publicJobByQuene(pipe, buffer);
+        } else {
+            pulishJobEvent(pipe, buffer);
+        }
+    }
+
+    private void publicJobByQuene(AioPipe pipe, ByteBuffer buffer) {
+//            waitOnPublish();
+        putToPublishQueue(pipe, buffer);
+        QueueItem item = publishQueue.poll();
+        pulishJobEvent(item.getPipe(), item.getBuffer());
+        buffer.clear();
+    }
+
     @Override
     public void onMessage(AioPipe pipe, Message message) {
         if (null != message) {
-            if (MqConfig.store_all_message_to_db) { // 持久化所有消息
-                if(!message.subscribeTF()){
+            if (MqConfig.start_store_all_message_to_db) { // 持久化所有消息
+                if (!message.subscribeTF()) {
                     tiggerStoreAllMsgToDb(persistent_worker, message);
                 }
             }
@@ -145,12 +179,17 @@ public enum ProcessorImpl implements Processor {
  /*               for (int i = 0; i < 10; i++) { //test code
                     pulishJobEvent(message);
                 }*/
-                    pulishJobEvent(message);
+//                    pulishJobEvent(message);
+                    publishJobToWorker(message);
 
                 }
             }
         }
 
+    }
+
+    public void pulishJobEvent(AioPipe pipe, ByteBuffer buffer) {
+        job_ringbuffer.tryPublishEvent(JobEvent::translate, pipe, buffer);
     }
 
     /**
@@ -201,7 +240,7 @@ public enum ProcessorImpl implements Processor {
     private boolean addSubscribeIF(AioPipe pipe, Message message) {
         if (message.subscribeTF()) {
             String clientKey = message.getK().getId();
-            Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), pipe.getId(), message.getLife(), message.getListen(),System.currentTimeMillis());
+            Subscribe listen = new Subscribe(clientKey, message.getK().getTopic(), pipe.getId(), message.getLife(), message.getListen(), System.currentTimeMillis());
             RingBufferQueue.Result result = cache_subscribe.putIfAbsent(listen);
             if (result.success) {
                 listen.setIdx(result.index);
@@ -237,7 +276,7 @@ public enum ProcessorImpl implements Processor {
     private boolean buildSubscribeWaitingJobResult(AioPipe pipe, Message message) {
         String jobId = message.getK().getId();
         String jobTopc = Message.buildFinishJobTopic(jobId, message.getK().getTopic());
-        Subscribe subscribe = new Subscribe(jobId, jobTopc, pipe.getId(), message.getLife(), message.getListen(),System.currentTimeMillis());
+        Subscribe subscribe = new Subscribe(jobId, jobTopc, pipe.getId(), message.getLife(), message.getListen(), System.currentTimeMillis());
         RingBufferQueue.Result result = cache_subscribe.putIfAbsent(subscribe);
         if (result.success) {
             subscribe.setIdx(result.index);
@@ -293,7 +332,7 @@ public enum ProcessorImpl implements Processor {
         //追加订阅者的消息ID及状态
         changeMessageOnReply(subscribe, message);
         // 发送消息给订阅方
-        boolean writed = getPipeBy(subscribe.getPipeId()).write(message);
+        boolean writed = getPipeBy(subscribe.getPipeId()).write(IOUtils.wrap(serializer.toByte(message)));
         if (writed) {
             onSendSuccToPrcess(subscribe, message);
         } else {
@@ -339,7 +378,7 @@ public enum ProcessorImpl implements Processor {
      */
     private boolean isPipeClosedThenRemove(Subscribe subscribe) {
         try {
-            if(null == subscribe.getPipeId()){
+            if (null == subscribe.getPipeId()) {
                 cache_subscribe.remove(subscribe.getIdx());
                 logger.warn("remove subscribe when pipeId is null ." + subscribe);
                 return true;
@@ -462,7 +501,7 @@ public enum ProcessorImpl implements Processor {
         String topic = acceptor.getK().getTopic();
         Message job = matchPublishJob(topic);
         if (null != job) {
-            Subscribe subscribe = new Subscribe(acceptor.getK().getId(), topic, pipe.getId(), acceptor.getLife(), acceptor.getListen(),System.currentTimeMillis());
+            Subscribe subscribe = new Subscribe(acceptor.getK().getId(), topic, pipe.getId(), acceptor.getLife(), acceptor.getListen(), System.currentTimeMillis());
             sendMessageToSubcribe(job, subscribe);
         }
     }
@@ -482,8 +521,8 @@ public enum ProcessorImpl implements Processor {
         return null;
     }
 
-    private AioPipe getPipeBy(Integer pipeId){
-       return AioServer.getChannelAliveMap().get(pipeId);
+    private AioPipe getPipeBy(Integer pipeId) {
+        return AioServer.getChannelAliveMap().get(pipeId);
     }
 
 
@@ -514,4 +553,40 @@ public enum ProcessorImpl implements Processor {
     public RingBufferQueue<Subscribe> getCache_subscribe() {
         return cache_subscribe;
     }
+
+    private void waitOnPublish() {
+        try {
+            Thread.sleep(0, 100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    class QueueItem {
+        private AioPipe pipe;
+        private ByteBuffer buffer;
+
+        public QueueItem(AioPipe pipe, ByteBuffer buffer) {
+            this.pipe = pipe;
+            this.buffer = buffer;
+        }
+
+        public AioPipe getPipe() {
+            return pipe;
+        }
+
+        public ByteBuffer getBuffer() {
+            return buffer;
+        }
+    }
+
+    private void putToPublishQueue(AioPipe pipe, ByteBuffer buffer) {
+        try {
+            QueueItem item = new QueueItem(pipe, buffer);
+            publishQueue.put(item);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
 }

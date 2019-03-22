@@ -78,7 +78,7 @@ public class AioPipe<T> implements Serializable {
         this.channel = channel;
         this.reader = reader;
         this.writer = writer;
-        this.writeCacheQueue = config.getQueueSize() > 0 ? new RingBufferQueue(config.getQueueSize()) : null;
+        this.writeCacheQueue = config.getQueueSize() > 0 ? new RingBufferQueue<>(config.getQueueSize()) : null;
         this.ioServerConfig = config;
         //触发状态机
         config.getProcessor().stateEvent(this, State.NEW_PIPE, null);
@@ -114,6 +114,7 @@ public class AioPipe<T> implements Serializable {
         buffer.clear();
     }
 
+
     /**
      * 输出数据。
      * <p>必须实现{@link Protocol#encode(Object)}</p>方法
@@ -122,12 +123,16 @@ public class AioPipe<T> implements Serializable {
      * @throws IOException
      */
     public final boolean write(T t) {
+        return writeBuffer(ioServerConfig.getProtocol().encode(t));
+    }
+
+    public final boolean writeBuffer(ByteBuffer buffer) {
         try {
-            boolean succ = writeToCacheQueue(ioServerConfig.getProtocol().encode(t));
+            boolean succ = writeToCacheQueue(buffer);
             if (succ) {
                 if (writeSemaphore.tryAcquire()) {
                     writeToChannel();
-                 }
+                }
             }
             return succ;
         } catch (Exception e) {
@@ -229,7 +234,6 @@ public class AioPipe<T> implements Serializable {
             } catch (Exception e) {
                 logger.error(e.getMessage(), e);
                 ioServerConfig.getProcessor().stateEvent(this, State.PROCESS_EXCEPTION, e);
-                throw e;
             }
         }
 

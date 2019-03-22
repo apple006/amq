@@ -6,6 +6,7 @@ import com.artlongs.amq.http.routes.Controller;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,13 +17,12 @@ import java.nio.file.Paths;
  *
  * @author: leeton on 2019/3/12.
  */
-public class Render<T> implements HttpHandler,Controller {
+public class Render<T> implements HttpHandler,Controller,Serializable {
 
     private byte[] data;
     private String templateUrl;
     private T params;
     private Fmt fmt;
-
 
     public Render(String templateUrl, T params) {
         this.templateUrl = templateUrl;

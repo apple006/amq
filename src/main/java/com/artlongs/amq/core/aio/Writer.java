@@ -32,8 +32,8 @@ public class Writer<T> implements CompletionHandler<Integer, AioPipe<T>> {
 
     @Override
     public void failed(Throwable exc, AioPipe<T> pipe) {
+        whenErrDoWaiting();
         pipe.clearWriteBufferAndUnLock();
-
         try {
             pipe.getServerConfig().getProcessor().stateEvent(pipe, State.OUTPUT_EXCEPTION, exc);
         } catch (Exception e) {
@@ -45,6 +45,12 @@ public class Writer<T> implements CompletionHandler<Integer, AioPipe<T>> {
             LOGGER.debug(e.getMessage(), e);
         }
     }
-
+    private void whenErrDoWaiting(){
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 
 }
