@@ -33,10 +33,10 @@ public class TestSend {
         client.start();
 
         long s = System.currentTimeMillis();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             TestUser user = new TestUser(i, "alice");
             processor.onlyPublish("topic_hello", user);
-            Thread.sleep(1,500);
+            Thread.sleep(0,500);
         }
         System.err.println("Time(ms):"+(System.currentTimeMillis()-s));
 

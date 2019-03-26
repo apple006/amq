@@ -1,18 +1,17 @@
 package com.artlongs.amq.admin;
 
+import com.artlongs.amq.core.Message;
 import com.artlongs.amq.core.Subscribe;
+import com.artlongs.amq.core.store.Condition;
 import com.artlongs.amq.core.store.IStore;
+import com.artlongs.amq.core.store.Page;
 import com.artlongs.amq.core.store.Store;
 import com.artlongs.amq.http.BaseController;
 import com.artlongs.amq.http.Render;
 import com.artlongs.amq.http.routes.Get;
 import com.artlongs.amq.http.routes.Url;
-import org.osgl.util.C;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Date;
 
 /**
  * Func :
@@ -33,15 +32,19 @@ public class QueryController extends BaseController {
     }
 
     @Get("/topic/q")
-    public Render topicQurey(String topic, Long begin, Long end, int pageNumber, int pageSize) {
-        Map<String, Subscribe> subscribeMap = C.newMap();
-        Collection<Subscribe> subscribeList = Store.INST.<Subscribe>getAll(IStore.mq_subscribe, Subscribe.class);
-        List<Subscribe> filterList = subscribeList.stream()
-                .filter(s -> s.getTopic().startsWith(topic))
-                .filter(s -> s.getCtime() >= begin && s.getCtime() <= end)
-                .collect(Collectors.toList());
+    public Render topicQurey(String topic, Date begin, Date end, int pageNumber, int pageSize) {
+        Page<Message> page = new Page(pageNumber, pageSize);
+        page = Store.INST.<Message>getPage(IStore.mq_common_publish,
+                new Condition<Message>(s -> s.getK().getTopic().startsWith(topic)),
+                new Condition<Message>(s -> s.getStat().getCtime() >= begin.getTime() && s.getStat().getCtime() <= end.getTime()),
+                page, Message.class);
 
-        return Render.json(C.Map("subscribe", filterList));
+        return Render.json(page);
+    }
+
+    public static void main(String[] args) {
+        Condition c = new Condition<Subscribe>(s -> s.getTopic().startsWith("hello"));
+        System.err.println(c);
     }
 
 

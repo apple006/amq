@@ -1,32 +1,48 @@
 <topiclist>
-    <h1>test</h1>
-<h3>{ opts.title }</h3>
+    <span>主题: <input ref="topic" type="text"/></span>
+    <span>开始时间: <input ref="begin" type="date"/></span>
+    <span>结束时间: <input ref="end" type="date" value=""/></span>
+    <button onclick={ submit }>查询</button>
 
-<ul>
-    <li each={ item, i in items }>{ item }</li>
-</ul>
+    <ul>
+        <li each={ item, i in items }>{ i+1 } -- { item.v } -- { item.stat.ctime }</li>
+    </ul>
 
-<form onsubmit={ add }>
-    <input ref="input">
-    <button>Add #{ items.length + 1 }</button>
-</form>
+    <!-- style -->
+    <style>
+        h3 {
+            font-size: 14px;
+        }
+    </style>
 
-<!-- style -->
-<style>
-    h3 {
-        font-size: 14px;
-    }
-</style>
+    <!-- logic -->
+    <!--suppress JSAnnotator -->
+    <script>
+        var tag = this;
+        tag.items = []
+        submit(e)
+        {
+            e.preventDefault();
+            var topic = tag.refs.topic.value;
+            var begin = tag.refs.begin.value;
+            var end = tag.refs.end.value;
+            if (topic == "" || begin == "" || end == "") return;
+            var pageNumber = 1;
+            var pageSize = 20;
+            var queryUrl = "/topic/q";
+            var params = {"topic": topic, "begin": begin, "end": end, "pageNumber": pageNumber, "pageSize": pageSize};
 
-<!-- logic -->
-<script>
-    this.items = [];
+            $.get(queryUrl, params, function (data) {
+                if (data != null) {
+                    console.log(data.items);
+                    tag.items = data.items;
+                    tag.update();
+                }
+            });
+            tag.refs.topic = topic;
+            tag.refs.begin = begin;
+            tag.refs.end = end;
+        }
 
-    add(e){
-        e.preventDefault();
-        var input = this.refs.input;
-        this.items.push(input.value);
-        input.value = '';
-    };
-</script>
+    </script>
 </topiclist>

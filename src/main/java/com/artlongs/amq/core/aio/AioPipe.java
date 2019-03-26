@@ -1,6 +1,6 @@
 package com.artlongs.amq.core.aio;
 
-import com.artlongs.amq.tools.RingBufferQueue;
+import com.artlongs.amq.tools.FastBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +61,7 @@ public class AioPipe<T> implements Serializable {
     /**
      * 响应消息缓存队列。
      */
-    private RingBufferQueue<ByteBuffer> writeCacheQueue;
+    private FastBlockingQueue writeCacheQueue;
     private Reader<T> reader;
     private Writer<T> writer;
     private AioServerConfig<T> ioServerConfig;
@@ -78,7 +78,7 @@ public class AioPipe<T> implements Serializable {
         this.channel = channel;
         this.reader = reader;
         this.writer = writer;
-        this.writeCacheQueue = config.getQueueSize() > 0 ? new RingBufferQueue<>(config.getQueueSize()) : null;
+        this.writeCacheQueue = config.getQueueSize() > 0 ? new FastBlockingQueue(config.getQueueSize()) : null;
         this.ioServerConfig = config;
         //触发状态机
         config.getProcessor().stateEvent(this, State.NEW_PIPE, null);
@@ -189,8 +189,8 @@ public class AioPipe<T> implements Serializable {
         }
 
         // 从队列读取 buffer
-        if (writeCacheQueue.notEmpty()) {
-            writeBuffer = writeCacheQueue.pop();
+        if (writeCacheQueue.size()>0) {
+            writeBuffer = writeCacheQueue.poll();
             writeBuffer.rewind();
         }
 

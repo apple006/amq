@@ -2,7 +2,6 @@ package com.artlongs.amq.http;
 
 import com.artlongs.amq.core.aio.Protocol;
 
-import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 
 /**
@@ -12,11 +11,6 @@ import java.nio.ByteBuffer;
  */
 public class HttpProtocol implements Protocol<Http> {
 
-    private ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-
-    private static final String rn = "\r\n";
-    private static final String end = "0\r\n\r\n";
-
     @Override
     public ByteBuffer encode(Http http) {
         return http.getResponse().build();
@@ -25,7 +19,7 @@ public class HttpProtocol implements Protocol<Http> {
     @Override
     public Http decode(ByteBuffer buffer) {
         Http http = new Http();
-        http.setRequest(new Request().build(buffer));
+        http.setRequest(new Request().build(buffer));//解析为 Request对象
         return http;
     }
 }

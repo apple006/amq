@@ -4,24 +4,19 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * 这个队列实际上用了读写互斥锁,以避免发生并发读写的IO错误
+ */
 public final class FastBlockingQueue {
 
-
     private final ByteBuffer[] items;
-
     private final ReentrantLock lock = new ReentrantLock(false);
-
-
     private final Condition notEmpty = lock.newCondition();
-
     private final Condition notFull = lock.newCondition();
 
     int takeIndex;
-
     int putIndex;
-
     int count;
-
     int remaining;
 
     public FastBlockingQueue(int capacity) {

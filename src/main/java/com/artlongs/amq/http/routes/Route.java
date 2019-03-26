@@ -2,6 +2,7 @@ package com.artlongs.amq.http.routes;
 
 import com.artlongs.amq.http.HttpHandler;
 import com.artlongs.amq.http.HttpRequest;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -181,6 +182,12 @@ public class Route {
             return Float.parseFloat(v);
         else if (c == double.class || c == Double.class) {
             return Double.parseDouble(v);
+        }
+        else if (c == Date.class) {
+            return DateTime.parse(v).toDate();
+        }
+        else if (c == DateTime.class) {
+            return DateTime.parse(v);
         }
         return v;
     }

@@ -4,7 +4,7 @@ package com.artlongs.amq.http;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -19,8 +19,8 @@ public class Request extends Http implements HttpRequest {
 	public String query;
 	public byte[] bodyBytes;
 	public StringBuilder sourceTxt = new StringBuilder();
-	public final Map<String,String> headers = new HashMap<>();
-	public final Map<String,Object> params = new HashMap<>();
+	public final Map<String,String> headers = new LinkedHashMap<>();
+	public final Map<String,Object> params = new LinkedHashMap<>();
 	private ReadState state = ReadState.BEGIN;
 
 	public enum ReadState {
