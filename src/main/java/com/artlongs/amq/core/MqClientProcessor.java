@@ -72,7 +72,7 @@ public class MqClientProcessor extends AioBaseProcessor<ByteBuffer> implements M
         Message result = futureResultMap.get(jobId).join();
         if (null != result) {
             removeFutureResultMap(result.getSubscribeId());
-            if (MqConfig.mq_auto_acked) {
+            if (MqConfig.inst.mq_auto_acked) {
                 ack(result.getSubscribeId(), Message.Life.SPARK);
             }
         }

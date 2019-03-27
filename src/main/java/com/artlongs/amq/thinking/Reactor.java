@@ -26,7 +26,7 @@ public class Reactor implements Runnable {
     final ServerSocketChannel serverSocket;
 
     // 初始化一个工作线程池
-    static ThreadPoolExecutor workerPool = new ThreadPoolExecutor(MqConfig.worker_thread_pool_size, MqConfig.worker_thread_pool_size, MqConfig.worker_keepalive_second, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+    static ThreadPoolExecutor workerPool = new ThreadPoolExecutor(MqConfig.inst.worker_thread_pool_size, MqConfig.inst.worker_thread_pool_size, MqConfig.inst.worker_keepalive_second, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 
     public Reactor(String address,int port) throws IOException {
         serverSocket = ServerSocketChannel.open();
@@ -99,7 +99,7 @@ public class Reactor implements Runnable {
 
 
     public static void main(String[] args) throws IOException {
-        Reactor reactor = new Reactor(MqConfig.host, MqConfig.port);
+        Reactor reactor = new Reactor(MqConfig.inst.host, MqConfig.inst.port);
         reactor.run();
     }
 

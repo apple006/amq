@@ -17,7 +17,7 @@ import java.util.concurrent.ThreadFactory;
 public class TestPing {
 
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
-        ExecutorService pool = Executors.newFixedThreadPool(MqConfig.client_connect_thread_pool_size);
+        ExecutorService pool = Executors.newFixedThreadPool(MqConfig.inst.client_connect_thread_pool_size);
         AsynchronousChannelGroup asynchronousChannelGroup = AsynchronousChannelGroup.withFixedThreadPool(20, new ThreadFactory() {
             @Override
             public Thread newThread(Runnable r) {
@@ -25,7 +25,7 @@ public class TestPing {
             }
         });
         MqClientProcessor processor = new MqClientProcessor();
-        AioMqClient<Message> client = new AioMqClient(MqConfig.host, MqConfig.port, new MqProtocol(), processor);
+        AioMqClient<Message> client = new AioMqClient(MqConfig.inst.host, MqConfig.inst.port, new MqProtocol(), processor);
         Thread t = new Thread(client);
         t.setDaemon(true);
         pool.submit(t);

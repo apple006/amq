@@ -5,16 +5,9 @@
     <button onclick={ submit }>查询</button>
 
     <ul>
-        <li each={ item, i in items }>{ i+1 } -- { item.v } -- { item.stat.ctime }</li>
+        <li each={ item, i in items }>{ i+1 } -- { JSON.stringify(item.v) } -- { Date.fmt(item.stat.ctime)}</li>
     </ul>
-
     <!-- style -->
-    <style>
-        h3 {
-            font-size: 14px;
-        }
-    </style>
-
     <!-- logic -->
     <!--suppress JSAnnotator -->
     <script>

@@ -17,15 +17,15 @@ import java.util.concurrent.ThreadFactory;
 public class TestSend {
 
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
-        ExecutorService pool = Executors.newFixedThreadPool(MqConfig.client_connect_thread_pool_size);
-        AsynchronousChannelGroup asynchronousChannelGroup = AsynchronousChannelGroup.withFixedThreadPool(MqConfig.client_connect_thread_pool_size, new ThreadFactory() {
+        ExecutorService pool = Executors.newFixedThreadPool(MqConfig.inst.client_connect_thread_pool_size);
+        AsynchronousChannelGroup asynchronousChannelGroup = AsynchronousChannelGroup.withFixedThreadPool(MqConfig.inst.client_connect_thread_pool_size, new ThreadFactory() {
             @Override
             public Thread newThread(Runnable r) {
                 return new Thread(r);
             }
         });
         MqClientProcessor processor = new MqClientProcessor();
-        AioMqClient<Message> client = new AioMqClient(MqConfig.host, MqConfig.port, new MqProtocol(), processor);
+        AioMqClient<Message> client = new AioMqClient(MqConfig.inst.host, MqConfig.inst.port, new MqProtocol(), processor);
         client.start(asynchronousChannelGroup);
         Thread t = new Thread(client);
         t.setDaemon(true);

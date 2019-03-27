@@ -26,7 +26,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Func : 消息处理中心
@@ -53,9 +52,9 @@ public enum ProcessorImpl implements Processor {
     private ConcurrentSkipListMap<String, Message> cache_public_job = new ConcurrentSkipListMap();
 
     /**
-     * 客户端订阅的缓存 RingBufferQueue(Subscribe)
+     * 订阅的缓存 RingBufferQueue(Subscribe)
      */
-    private RingBufferQueue<Subscribe> cache_subscribe = new RingBufferQueue<>(MqConfig.mq_cache_map_sizes);
+    private RingBufferQueue<Subscribe> cache_subscribe = new RingBufferQueue<>(MqConfig.inst.mq_subscribe_quene_cache_sizes);
 
     // ringBuffer cap setting
     private final int WORKER_BUFFER_SIZE = 1024 * 32;
@@ -84,8 +83,8 @@ public enum ProcessorImpl implements Processor {
     ProcessorImpl() {
         this.job_ringbuffer = createDisrupter().start();
         //
-        bizExecutor = Executors.newFixedThreadPool(MqConfig.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
-        storeExecutor = Executors.newFixedThreadPool(MqConfig.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
+        bizExecutor = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
+        storeExecutor = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
         this.biz_worker_pool = createWorkerPool(new BizEventHandler());
         this.biz_worker = biz_worker_pool.start(bizExecutor);
         //
@@ -129,7 +128,7 @@ public enum ProcessorImpl implements Processor {
 
     public void onMessage(AioPipe pipe, ByteBuffer buffer) {
         waitOnPublish();
-        if (MqConfig.start_mq_publish_of_safe_queue) {
+        if (MqConfig.inst.start_mq_publish_of_safe_queue) {
             publicJobByQuene(pipe, buffer);
         } else {
             pulishJobEvent(pipe, buffer);
@@ -147,7 +146,7 @@ public enum ProcessorImpl implements Processor {
     @Override
     public void onMessage(AioPipe pipe, Message message) {
         if (null != message) {
-            if (MqConfig.start_store_all_message_to_db) { // 持久化所有消息
+            if (MqConfig.inst.start_store_all_message_to_db) { // 持久化所有消息
                 if (!message.subscribeTF()) {
                     tiggerStoreAllMsgToDb(persistent_worker, message);
                 }

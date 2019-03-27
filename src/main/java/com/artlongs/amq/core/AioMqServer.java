@@ -26,13 +26,13 @@ public class AioMqServer {
 
     private HttpServer httpServer = null;
 
-    private ExecutorService pool = Executors.newFixedThreadPool(MqConfig.server_connect_thread_pool_size);
+    private ExecutorService pool = Executors.newFixedThreadPool(MqConfig.inst.server_connect_thread_pool_size);
 
     public void start() {
         try {
-            AioServer<ByteBuffer> aioServer = new AioServer<>(MqConfig.host, MqConfig.port, new MqProtocol(), new MqServerProcessor());
-            aioServer.startCheckAlive(MqConfig.start_check_client_alive);
-            aioServer.startMonitorPlugin(MqConfig.start_flow_monitor);
+            AioServer<ByteBuffer> aioServer = new AioServer<>(MqConfig.inst.host, MqConfig.inst.port, new MqProtocol(), new MqServerProcessor());
+            aioServer.startCheckAlive(MqConfig.inst.start_check_client_alive);
+            aioServer.startMonitorPlugin(MqConfig.inst.start_flow_monitor);
             //
             Thread t = new Thread(aioServer);
             t.setDaemon(true);
@@ -53,7 +53,7 @@ public class AioMqServer {
     }
 
     public void startAdmin(){
-        if (MqConfig.start_mq_admin) {
+        if (MqConfig.inst.start_mq_admin) {
             httpServer = AioHttpServer.instance;
 //            HttpProcessor processor = httpServer.getHttpProcessor();
 //            processor.addController(new QueryController().getControllers());

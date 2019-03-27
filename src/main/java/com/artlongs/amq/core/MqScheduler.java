@@ -29,11 +29,11 @@ public enum MqScheduler {
     public void start() {
         // 计时任务
         final ScheduledFuture<?> delaySend = scheduler.scheduleWithFixedDelay(
-                delaySendOnScheduled(), MqConfig.msg_not_acked_resend_period, MqConfig.msg_not_acked_resend_period, SECONDS);
+                delaySendOnScheduled(), MqConfig.inst.msg_not_acked_resend_period, MqConfig.inst.msg_not_acked_resend_period, SECONDS);
         final ScheduledFuture<?> retrySend = scheduler.scheduleWithFixedDelay(
-                retrySendOnScheduled(), MqConfig.msg_falt_message_resend_period, MqConfig.msg_falt_message_resend_period, SECONDS);
+                retrySendOnScheduled(), MqConfig.inst.msg_falt_message_resend_period, MqConfig.inst.msg_falt_message_resend_period, SECONDS);
         final ScheduledFuture<?> checkAlive = scheduler.scheduleWithFixedDelay(
-                removeExpireMsgScheduled(), MqConfig.msg_default_alive_time_second, MqConfig.msg_default_alive_time_second, SECONDS);
+                removeExpireMsgScheduled(), MqConfig.inst.msg_default_alive_time_second, MqConfig.inst.msg_default_alive_time_second, SECONDS);
 
 /*        TimeWheelService.instance.schedule(delaySendOnScheduled(), 5, MqConfig.msg_not_acked_resend_period, SECONDS);
         TimeWheelService.instance.schedule(retrySendOnScheduled(), 5, MqConfig.msg_falt_message_resend_period, SECONDS);
@@ -49,7 +49,7 @@ public enum MqScheduler {
         final Runnable delay = new Runnable() {
             @Override
             public void run() {
-                if (MqConfig.start_msg_not_acked_resend) {
+                if (MqConfig.inst.start_msg_not_acked_resend) {
 
                     RingBufferQueue<Subscribe> cache_subscribe = ProcessorImpl.INST.getCache_subscribe();
                     if (cache_subscribe.empty()) { // 从 DB 恢复所有订阅
@@ -68,7 +68,7 @@ public enum MqScheduler {
                     }
 
                     for (Message message : cache_common_publish_message.values()) {
-                        if (MqConfig.msg_not_acked_resend_max_times > message.getStat().getDelay()) {
+                        if (MqConfig.inst.msg_not_acked_resend_max_times > message.getStat().getDelay()) {
                             logger.warn("The scheduler task is running delay-send message({})! " , message.getK().getId());
                             message.incrDelay();
                             ProcessorImpl.INST.pulishJobEvent(message);
@@ -90,7 +90,7 @@ public enum MqScheduler {
         final Runnable retry = new Runnable() {
             @Override
             public void run() {
-                if (MqConfig.onoff_msg_falt_message_resendf) {
+                if (MqConfig.inst.start_msg_falt_message_resendf) {
                     ConcurrentSkipListMap<String, Message> cache_falt_message = ProcessorImpl.INST.getCache_falt_message();
                     if (C.isEmpty(cache_falt_message)) {
                         final List<Message> retryList = Store.INST.getAll(IStore.mq_need_retry, Message.class);
@@ -99,7 +99,7 @@ public enum MqScheduler {
                         }
                     }
                     for (Message message : cache_falt_message.values()) {
-                        if (MqConfig.msg_falt_message_resend_max_times > message.getStat().getRetry()) {
+                        if (MqConfig.inst.msg_falt_message_resend_max_times > message.getStat().getRetry()) {
                             logger.warn("The scheduler task is running retry-send message ({})!",message.getK().getId());
                             message.incrRetry();
                             ProcessorImpl.INST.pulishJobEvent(message);
@@ -162,7 +162,7 @@ public enum MqScheduler {
                     if (subscribe != null) {
                         long cTime = subscribe.getCtime();
                         long now = System.currentTimeMillis();
-                        long ttl = MqConfig.msg_default_alive_time_second * 1000;
+                        long ttl = MqConfig.inst.msg_default_alive_time_second * 1000;
                         if ((now - cTime >= ttl) && Message.Life.FOREVER != subscribe.getLife()) {
                             String id = subscribe.getId();
                             logger.warn("The scheduler task is running remove subscribe({}) on TTL.", id);

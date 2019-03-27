@@ -2,7 +2,9 @@ package com.artlongs.amq.core.aio;
 
 import com.artlongs.amq.core.MqConfig;
 import com.artlongs.amq.core.aio.plugin.HeartPlugin;
+import com.artlongs.amq.core.aio.plugin.IpPlugin;
 import com.artlongs.amq.core.aio.plugin.MonitorPlugin;
+import com.artlongs.amq.tools.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +48,7 @@ public class AioServer<T> implements Runnable{
     /**
      * 客户端存活列表,ConcurrentHashMap[PipeID,AioPipe]
      */
-    private static ConcurrentHashMap<Integer, AioPipe> channelAliveMap = new ConcurrentHashMap<>(MqConfig.client_connect_thread_pool_size);
+    private static ConcurrentHashMap<Integer, AioPipe> channelAliveMap = new ConcurrentHashMap<>(MqConfig.inst.client_connect_thread_pool_size);
 
     private boolean checkAlive = false;
 
@@ -122,7 +124,13 @@ public class AioServer<T> implements Runnable{
                 @Override
                 public void completed(final AsynchronousSocketChannel channel, AsynchronousServerSocketChannel serverSocketChannel) {
                     serverSocketChannel.accept(serverSocketChannel, this);
-                    createPipe(channel);
+                    String remoteAddressStr = IOUtils.getRemoteAddressStr(channel);
+                    if(IpPlugin.findInBlackList(remoteAddressStr)){
+                        IOUtils.closeChannel(channel);
+                        LOGGER.warn("[X]Find black IP ({}),so close connetion.",remoteAddressStr);
+                    }else {
+                        createPipe(channel);
+                    }
                 }
 
                 @Override

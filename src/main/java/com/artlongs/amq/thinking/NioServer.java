@@ -85,6 +85,6 @@ public class NioServer {
     }
 
     public static void main(String[] args) throws IOException {
-        new NioServer().init(MqConfig.port).listen();
+        new NioServer().init(MqConfig.inst.port).listen();
     }
 }

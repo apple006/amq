@@ -6,6 +6,7 @@
     <script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/riot@3.7.4/riot+compiler.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/riot-route@x.x.x/dist/route.min.js"></script>
+    <script src="/views/asset/js/app.js"></script>
 
     <style>
         body{background:#f2f2f2}
@@ -19,34 +20,6 @@
 </body>
 </html>
 <script>
-    window.eventBus = riot.observable();  // riot 的事件观察
-    //路由
-    var r = route.create();
-    r("/..", function () {
-        viewOf(route);
-    });
-
-    function viewOf(route) {
-        eventBus.trigger('open', {view: 'viewbox', uri: "/" + route.uri, params: route.params});
-    }
-
-    //自定义改写route对于路径的解析
-    route.parser(function (path) {
-        var raw = path.split('?'),
-            uri = raw[0],
-            qs = raw[1],
-            params = {}
-        if (qs) {
-            qs.split('&').forEach(function (v) {
-                var c = v.split('=')
-                params[c[0]] = c[1]
-            });
-        }
-        //属性回写到route
-        route.uri = uri;
-        route.params = params;
-        return route;
-    });
 
 /*    eventBus.on('tree_data', function (data) {
         console.log("data hoe=" + data);

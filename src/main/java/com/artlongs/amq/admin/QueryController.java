@@ -31,6 +31,15 @@ public class QueryController extends BaseController {
         return Render.template("/topic.html");
     }
 
+    /**
+     * 按 TOPIC 查询消息内容
+     * @param topic
+     * @param begin
+     * @param end
+     * @param pageNumber
+     * @param pageSize
+     * @return
+     */
     @Get("/topic/q")
     public Render topicQurey(String topic, Date begin, Date end, int pageNumber, int pageSize) {
         Page<Message> page = new Page(pageNumber, pageSize);

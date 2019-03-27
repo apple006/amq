@@ -72,7 +72,7 @@ public class NioClient {
 
 
     public static void main(String[] args) throws IOException {
-        NioClient client = new NioClient(MqConfig.host, MqConfig.port);
+        NioClient client = new NioClient(MqConfig.inst.host, MqConfig.inst.port);
 
         client.listen();
 

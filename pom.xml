@@ -1,12 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.artlongs</groupId>
     <artifactId>artlongs-amq</artifactId>
-    <packaging>pom</packaging>
+    <packaging>jar</packaging>
     <version>0.0.1-snapshot</version>
     <name>artlongs-amq</name>
+
+    <profiles>
+        <profile>
+            <id>prod</id>
+            <properties>
+                <profile.env>prod</profile.env>
+            </properties>
+        </profile>
+        <profile>
+            <id>test</id>
+            <properties>
+                <profile.env>test</profile.env>
+            </properties>
+        </profile>
+        <profile>
+            <id>dev</id>
+            <properties>
+                <profile.env>dev</profile.env>
+            </properties>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+    </profiles>
 
     <properties>
         <jdk.version>1.8</jdk.version>
@@ -34,7 +59,6 @@
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
         </dependency>
-
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
@@ -56,11 +80,6 @@
             <version>${mapdb.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.mapdb</groupId>
-            <artifactId>mapdb</artifactId>
-            <version>${mapdb.version}</version>
-        </dependency>
-        <dependency>
             <groupId>de.ruedigermoeller</groupId>
             <artifactId>fst</artifactId>
             <version>${fst.version}</version>
@@ -70,7 +89,6 @@
             <artifactId>jaque</artifactId>
             <version>2.1.2</version>
         </dependency>
-
     </dependencies>
 
     <build>
@@ -115,34 +133,14 @@
         </plugins>
         <resources>
             <resource>
-                <filtering>false</filtering>
                 <directory>src/main/resources</directory>
-            </resource>
-            <resource>
-                <filtering>false</filtering>
-                <directory>src/main/java</directory>
-                <includes>
-                    <include>**</include>
-                </includes>
-                <excludes>
-                    <exclude>**/*.java</exclude>
-                </excludes>
+                <filtering>true</filtering>
             </resource>
         </resources>
         <testResources>
             <testResource>
-                <filtering>false</filtering>
                 <directory>src/test/resources</directory>
-            </testResource>
-            <testResource>
-                <filtering>false</filtering>
-                <directory>src/test/java</directory>
-                <includes>
-                    <include>**</include>
-                </includes>
-                <excludes>
-                    <exclude>**/*.java</exclude>
-                </excludes>
+                <filtering>true</filtering>
             </testResource>
         </testResources>
 

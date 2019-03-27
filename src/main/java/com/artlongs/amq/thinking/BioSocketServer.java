@@ -97,7 +97,7 @@ public class BioSocketServer extends Thread {
     }
 
     public static void main(String[] args) throws IOException{
-        BioSocketServer serverSocket = new BioSocketServer(MqConfig.port, 20);
+        BioSocketServer serverSocket = new BioSocketServer(MqConfig.inst.port, 20);
         serverSocket.run();
     }
 }

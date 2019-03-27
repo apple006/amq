@@ -1,8 +1,8 @@
 package com.artlongs.amq.tools;
 
-import com.artlongs.amq.core.MqConfig;
 import com.artlongs.amq.core.aio.DirectBufferUtil;
 import com.artlongs.amq.serializer.ISerializer;
+import com.artlongs.amq.tools.io.Pool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +84,7 @@ public class IOUtils {
         try {
             if(sc.isOpen()){
 //                ByteBuffer buffer = ByteBuffer.allocate(8192);
-                ByteBuffer buffer = MqConfig.mq_buffer_pool.allocate().getResource();// 分配外部 direct buffer
+                ByteBuffer buffer = Pool.MEDIUM_DIRECT.allocate().getResource();// 分配外部 direct buffer
                 buffer.put(attachment);
                 buffer.position(0);
                 buffer.limit(attachment.length);

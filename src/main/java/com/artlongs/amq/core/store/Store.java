@@ -42,7 +42,7 @@ public enum Store implements IStore {
 
     @Override
     public DB markDb(String dbName) {
-        DB _db = DBMaker.fileDB(MqConfig.mapdb_file_path + dbName)
+        DB _db = DBMaker.fileDB(MqConfig.inst.mq_db_store_file_path + dbName)
                 .fileMmapEnableIfSupported()
                 .fileMmapPreclearDisable()
                 .allocateIncrement(1024)
