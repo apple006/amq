@@ -15,6 +15,7 @@ import java.util.List;
  */
 @Target({ElementType.TYPE, ElementType.TYPE_USE})
 @Retention(RetentionPolicy.RUNTIME)
+@SuppressWarnings("unchecked")
 public @interface Url {
     public String value() default "";
 

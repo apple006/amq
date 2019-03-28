@@ -15,11 +15,10 @@
  */
 package com.artlongs.amq.disruptor;
 
-import java.util.concurrent.locks.LockSupport;
-
+import com.artlongs.amq.disruptor.util.Util;
 import sun.misc.Unsafe;
 
-import com.artlongs.amq.disruptor.util.Util;
+import java.util.concurrent.locks.LockSupport;
 
 
 /**
@@ -30,6 +29,7 @@ import com.artlongs.amq.disruptor.util.Util;
  * to {@link Sequencer#next()}, to determine the highest available sequence that can be read, then
  * {@link Sequencer#getHighestPublishedSequence(long, long)} should be used.</p>
  */
+@SuppressWarnings("Unsafe")
 public final class MultiProducerSequencer extends AbstractSequencer
 {
     private static final Unsafe UNSAFE = Util.getUnsafe();

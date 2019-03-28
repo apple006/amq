@@ -17,7 +17,7 @@ import java.nio.file.Paths;
  *
  * @author: leeton on 2019/3/12.
  */
-public class Render<T> implements HttpHandler,Controller,Serializable {
+public class Render<T> implements HttpHandler, Controller, Serializable {
 
     private byte[] data;
     private String templateUrl;
@@ -37,7 +37,7 @@ public class Render<T> implements HttpHandler,Controller,Serializable {
         resp.end();
     }
 
-    public static Render template(String url){
+    public static Render template(String url) {
         return template(url, null);
     }
 
@@ -62,21 +62,27 @@ public class Render<T> implements HttpHandler,Controller,Serializable {
 
     /**
      * 读取模板文件
+     *
      * @param url 模板
      * @return
      */
+    @SuppressWarnings("unchecked")
     private static byte[] read(String url) {
+        InputStream inputStream = null;
         try {
             Path path = Paths.get(getHomePath().getPath() + url);
-            InputStream is = Files.newInputStream(path);
-            int length = is.available();
+            inputStream = Files.newInputStream(path);
+            int length = inputStream.available();
             byte[] b = new byte[length];//把所有的数据读取到这个字节当中
-            is.read(b,0,length);
-            is.close();
+            inputStream.read(b, 0, length);
+            inputStream.close();
             return b;
-
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (inputStream != null) {
+                inputStream = null;
+            }
         }
         return new byte[0];
 
@@ -84,6 +90,7 @@ public class Render<T> implements HttpHandler,Controller,Serializable {
 
     /**
      * 取得项目的模板根目录的绝对路径
+     *
      * @return
      */
     private static File getHomePath() {
@@ -97,16 +104,16 @@ public class Render<T> implements HttpHandler,Controller,Serializable {
         return new File("");
     }
 
-    private void setHeadOfFmt(HttpResponse resp){
+    private void setHeadOfFmt(HttpResponse resp) {
         if (Fmt.json == this.fmt) {
-            resp.setHeader("Content-Type","application/json; charset=utf-8");
+            resp.setHeader("Content-Type", "application/json; charset=utf-8");
         }
         if (Fmt.html == this.fmt) {
-            resp.setHeader("Content-Type","text/html; charset=utf-8");
+            resp.setHeader("Content-Type", "text/html; charset=utf-8");
         }
     }
 
-    public enum Fmt{
-        html,json;
+    public enum Fmt {
+        html, json;
     }
 }

@@ -71,25 +71,29 @@ public enum ProcessorImpl implements Processor {
     private RingBuffer<JobEvent> persistent_worker = null;
     // 消息持久化 worker pool
     private WorkerPool<JobEvent> persistent_worker_pool = null;
-    ExecutorService bizExecutor = null;
-    ExecutorService storeExecutor = null;
+    ExecutorService bizPool = null;
+    ExecutorService storePool = null;
     ISerializer serializer = ISerializer.Serializer.INST.of();
     LinkedBlockingQueue<QueueItem> publishQueue = new LinkedBlockingQueue(10000);
+    private Disruptor mqDisruptor;
+
+    private static boolean shutdowNow = false; // 关闭服务
 
     public ProcessorImpl me() {
         return this;
     }
 
     ProcessorImpl() {
-        this.job_ringbuffer = createDisrupter().start();
+        this.mqDisruptor = createDisrupter();
+        this.job_ringbuffer = mqDisruptor.start();
         //
-        bizExecutor = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
-        storeExecutor = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
+        bizPool = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
+        storePool = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
         this.biz_worker_pool = createWorkerPool(new BizEventHandler());
-        this.biz_worker = biz_worker_pool.start(bizExecutor);
+        this.biz_worker = biz_worker_pool.start(bizPool);
         //
         this.persistent_worker_pool = createWorkerPool(new StoreEventHandler());
-        this.persistent_worker = persistent_worker_pool.start(storeExecutor);
+        this.persistent_worker = persistent_worker_pool.start(storePool);
 
     }
 
@@ -127,11 +131,13 @@ public enum ProcessorImpl implements Processor {
     }
 
     public void onMessage(AioPipe pipe, ByteBuffer buffer) {
-        waitOnPublish();
-        if (MqConfig.inst.start_mq_publish_of_safe_queue) {
-            publicJobByQuene(pipe, buffer);
-        } else {
-            pulishJobEvent(pipe, buffer);
+        if(!shutdowNow){
+            waitOnPublish();
+            if (MqConfig.inst.start_mq_publish_of_safe_queue) {
+                publicJobByQuene(pipe, buffer);
+            } else {
+                pulishJobEvent(pipe, buffer);
+            }
         }
     }
 
@@ -145,7 +151,7 @@ public enum ProcessorImpl implements Processor {
 
     @Override
     public void onMessage(AioPipe pipe, Message message) {
-        if (null != message) {
+        if (!shutdowNow && null != message) {
             if (MqConfig.inst.start_store_all_message_to_db) { // 持久化所有消息
                 if (!message.subscribeTF()) {
                     tiggerStoreAllMsgToDb(persistent_worker, message);
@@ -527,6 +533,8 @@ public enum ProcessorImpl implements Processor {
 
     @Override
     public void shutdown() {
+        this.shutdowNow = true;
+        shutdownService();
         clearAllCache();
     }
 
@@ -535,6 +543,18 @@ public enum ProcessorImpl implements Processor {
         cache_falt_message.clear();
         cache_common_publish_message.clear();
         cache_subscribe.clear();
+    }
+
+    private void shutdownService(){
+        try {
+            this.mqDisruptor.shutdown();
+            this.biz_worker_pool.drainAndHalt();
+            this.persistent_worker_pool.drainAndHalt();
+            this.bizPool.shutdown();
+            this.storePool.shutdown();
+        } catch (Exception e) {
+            logger.error("Shutdow MQ service Error:", e);
+        }
     }
 
     public ConcurrentSkipListMap<String, Message> getCache_common_publish_message() {

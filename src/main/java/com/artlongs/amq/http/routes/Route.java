@@ -129,6 +129,7 @@ public class Route {
         return (evaluatedPattern != null ? evaluatedPattern : (evaluatedPattern = compile())).matcher(uri).matches();
     }
 
+    @SuppressWarnings("non-varargs")
     public Object invoke(HttpRequest req) throws InvocationTargetException, IllegalAccessException {
         Set<Object> valueSet = new HashSet<>();
         if (direct != null)

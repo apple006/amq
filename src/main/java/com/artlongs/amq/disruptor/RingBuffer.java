@@ -31,6 +31,7 @@ abstract class RingBufferFields<E> extends RingBufferPad
     private static final int BUFFER_PAD;
     private static final long REF_ARRAY_BASE;
     private static final int REF_ELEMENT_SHIFT;
+    @SuppressWarnings("unsafe")
     private static final Unsafe UNSAFE = Util.getUnsafe();
 
     static
@@ -100,6 +101,7 @@ abstract class RingBufferFields<E> extends RingBufferPad
  *
  * @param <E> implementation storing the write for sharing during exchange or parallel coordination of an event.
  */
+@SuppressWarnings("unsafe")
 public final class RingBuffer<E> extends RingBufferFields<E> implements Cursored, EventSequencer<E>, EventSink<E>
 {
     public static final long INITIAL_CURSOR_VALUE = Sequence.INITIAL_VALUE;

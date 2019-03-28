@@ -8,8 +8,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Func :MQ 服务端
@@ -23,6 +25,7 @@ public class AioMqServer {
     }
 
     public static final AioMqServer instance = new AioMqServer();
+    private AioServer aioServer = null;
 
     private HttpServer httpServer = null;
 
@@ -38,11 +41,13 @@ public class AioMqServer {
             t.setDaemon(true);
             pool.submit(t);
             aioServer.start();
+            this.aioServer = aioServer;
             //
             scheduler();
             //
             startAdmin();
             //
+            startCommond();
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
         }
@@ -63,8 +68,55 @@ public class AioMqServer {
     }
 
     public void shutdown() {
+        //关闭后台管理
+        this.httpServer.shutdown();
+        //关闭 MQ 服务
         ProcessorImpl.INST.shutdown();
-        httpServer.shutdown();
+        //关闭 AIO 服务器
+        this.aioServer.shutdown();
+        shutdownMe();
+        shutdownOfWait();
+        System.out.println("================= AMQ EXIT =================");
+        System.out.println("AMQ 已安全退出.");
+    }
+
+    private void shutdownMe(){
+        if(!pool.isTerminated()){
+            pool.shutdownNow();
+        }
+        try {
+            pool.awaitTermination(3, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            pool.shutdownNow();
+        }
+    }
+
+    private void shutdownOfWait(){
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void startCommond(){
+        Scanner sc = new Scanner(System.in);
+        while (true){
+            sc.useDelimiter("/n");
+            System.out.println();
+            System.out.println("=======================================");
+            System.out.println("AMQ已启动,如果想退出,请输入命令: quit");
+            System.out.println("=======================================");
+            System.out.println();
+            String quit = sc.nextLine();
+            if(quit.equalsIgnoreCase("quit")){
+                shutdown();
+                sc.close();
+                break;
+            }
+
+        }
     }
 
 

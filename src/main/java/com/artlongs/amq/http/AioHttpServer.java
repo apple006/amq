@@ -51,7 +51,7 @@ public class AioHttpServer implements HttpServer {
 
     @Override
     public void shutdown() {
-        pool.shutdown();
+        pool.shutdownNow();
     }
 
     @Override

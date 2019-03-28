@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
+@SuppressWarnings("unchecked")
 public class DirectBufferUtil {
     private static final int TEMP_BUF_POOL_SIZE;
     private static final long MAX_CACHED_BUFFER_SIZE;

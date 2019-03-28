@@ -25,7 +25,7 @@ import java.util.function.Function;
  *
  * @author: leeton on 2019/2/22.
  */
-public class AioServer<T> implements Runnable{
+public class AioServer<T> implements Runnable {
     private static final Logger LOGGER = LoggerFactory.getLogger(AioServer.class);
     /**
      * Server端服务配置。
@@ -64,7 +64,7 @@ public class AioServer<T> implements Runnable{
         config.setPort(port);
         config.setProtocol(protocol);
         config.setProcessor(messageProcessor);
-        if(checkAlive){//运行检测心跳
+        if (checkAlive) {//运行检测心跳
             new HeartPlugin(this.channelAliveMap).run();
         }
     }
@@ -109,8 +109,8 @@ public class AioServer<T> implements Runnable{
             this.serverSocketChannel = AsynchronousServerSocketChannel.open(asynchronousChannelThreadPool);
             //set socket options
             if (config.getSocketOptions() != null) {
-                for (SocketOption option :config.getSocketOptions()) {
-                    this.serverSocketChannel.setOption(option,option.type());
+                for (SocketOption option : config.getSocketOptions()) {
+                    this.serverSocketChannel.setOption(option, option.type());
                 }
             }
             //bind host
@@ -125,10 +125,10 @@ public class AioServer<T> implements Runnable{
                 public void completed(final AsynchronousSocketChannel channel, AsynchronousServerSocketChannel serverSocketChannel) {
                     serverSocketChannel.accept(serverSocketChannel, this);
                     String remoteAddressStr = IOUtils.getRemoteAddressStr(channel);
-                    if(IpPlugin.findInBlackList(remoteAddressStr)){
+                    if (IpPlugin.findInBlackList(remoteAddressStr)) {
                         IOUtils.closeChannel(channel);
-                        LOGGER.warn("[X]Find black IP ({}),so close connetion.",remoteAddressStr);
-                    }else {
+                        LOGGER.warn("[X]Find black IP ({}),so close connetion.", remoteAddressStr);
+                    } else {
                         createPipe(channel);
                     }
                 }
@@ -142,7 +142,7 @@ public class AioServer<T> implements Runnable{
             shutdown();
             throw e;
         }
-        LOGGER.warn("amq-socket server started on {} {}", config.getHost(),config.getPort());
+        LOGGER.warn("amq-socket server started on {} {}", config.getHost(), config.getPort());
         LOGGER.info("amq-socket server config is {}", config);
     }
 
@@ -158,7 +158,7 @@ public class AioServer<T> implements Runnable{
             pipe = aioPipeFunction.apply(channel);
             pipe.initSession();
             if (null != pipe) {
-                channelAliveMap.putIfAbsent(pipe.getId(),pipe);
+                channelAliveMap.putIfAbsent(pipe.getId(), pipe);
             }
         } catch (Exception e1) {
             LOGGER.debug(e1.getMessage(), e1);
@@ -200,6 +200,9 @@ public class AioServer<T> implements Runnable{
         } catch (IOException e) {
             LOGGER.warn(e.getMessage(), e);
         }
+        //先尝试关闭服务,但运中的任务还在跑...
+        asynchronousChannelThreadPool.shutdown();
+        // 真正关闭服务
         if (!asynchronousChannelThreadPool.isTerminated()) {
             try {
                 asynchronousChannelThreadPool.shutdownNow();
@@ -207,11 +210,18 @@ public class AioServer<T> implements Runnable{
                 LOGGER.error("shutdown exception", e);
             }
         }
-        try {
+/*        try {
             asynchronousChannelThreadPool.awaitTermination(3, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             LOGGER.error("shutdown exception", e);
+        }*/
+        // 关闭流量统计
+        Monitor monitor = this.config.getProcessor().getMonitor();
+        if (monitor != null) {
+            ((MonitorPlugin) monitor).cancel();
         }
+
+
     }
 
 
@@ -263,6 +273,7 @@ public class AioServer<T> implements Runnable{
      * 2. StandardSocketOptions.SO_RCVBUF<br/>
      * 4. StandardSocketOptions.SO_REUSEADDR<br/>
      * </p>
+     *
      * @return
      */
     public final <V> AioServer<T> setOption(SocketOption options) {
@@ -279,8 +290,9 @@ public class AioServer<T> implements Runnable{
         this.checkAlive = tf;
         return this;
     }
+
     public AioServer<T> startMonitorPlugin(boolean tf) {
-        if(tf) addPlugin(new MonitorPlugin());
+        if (tf) addPlugin(new MonitorPlugin());
         return this;
     }
 

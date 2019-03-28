@@ -27,6 +27,7 @@ import java.security.PrivilegedExceptionAction;
 /**
  * Set of common functions used by the Disruptor
  */
+@SuppressWarnings("all")
 public final class Util
 {
     /**
@@ -88,13 +89,14 @@ public final class Util
 
         return sequences;
     }
-
+    @SuppressWarnings("unsafe")
     private static final Unsafe THE_UNSAFE;
 
     static
     {
         try
         {
+            @SuppressWarnings("unsafe")
             final PrivilegedExceptionAction<Unsafe> action = new PrivilegedExceptionAction<Unsafe>()
             {
                 public Unsafe run() throws Exception
@@ -119,6 +121,7 @@ public final class Util
      *
      * @return The Unsafe
      */
+    @SuppressWarnings("unsafe")
     public static Unsafe getUnsafe()
     {
         return THE_UNSAFE;

@@ -96,21 +96,23 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.5.1</version>
+                <version>3.8.0</version>
                 <configuration>
                     <source>${jdk.version}</source>
                     <target>${jdk.version}</target>
                     <optimize>true</optimize>
                     <encoding>UTF-8</encoding>
-                    <showWarnings>true</showWarnings>
+                    <showWarnings>false</showWarnings>
                     <showDeprecation>true</showDeprecation>
+                    <meminitial>128m</meminitial><!-- 编译器使用的初始内存 -->
+                    <maxmem>512m</maxmem><!-- 编译器使用的最大内存 -->
                 </configuration>
                 <inherited>true</inherited>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>2.2</version>
+                <version>3.0.1</version>
                 <executions>
                     <execution>
                         <goals>
@@ -119,18 +121,34 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
-                <version>2.5</version>
+                <version>2.5.3</version>
                 <configuration>
                     <goals>deploy</goals>
                     <autoVersionSubmodules>true</autoVersionSubmodules>
                     <tagNameFormat>release-@{project.version}</tagNameFormat>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.2.1</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <executable>java</executable>
+                    <mainClass>com.artlongs.amq.core.AioMqServer</mainClass>
+                </configuration>
+            </plugin>
         </plugins>
+        <!--  -->
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
@@ -143,7 +161,6 @@
                 <filtering>true</filtering>
             </testResource>
         </testResources>
-
     </build>
 
 </project>
