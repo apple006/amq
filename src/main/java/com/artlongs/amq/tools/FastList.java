@@ -16,20 +16,18 @@
 
 package com.artlongs.amq.tools;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.util.*;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
 
 /**
  * Fast list without range checking.
  *
  * @author Brett Wooldridge
  */
-public final class FastList<T> implements List<T>, RandomAccess, Serializable
-{
+public final class FastList<T> extends AbstractList<T> implements List<T>, RandomAccess, Serializable {
    private static final long serialVersionUID = -4598088075242913858L;
 
    private final Class<?> clazz;
@@ -38,23 +36,23 @@ public final class FastList<T> implements List<T>, RandomAccess, Serializable
 
    /**
     * Construct a FastList with a default size of 32.
+    *
     * @param clazz the Class stored in the collection
     */
    @SuppressWarnings("unchecked")
-   public FastList(Class<?> clazz)
-   {
+   public FastList(Class<?> clazz) {
       this.elementData = (T[]) Array.newInstance(clazz, 32);
       this.clazz = clazz;
    }
 
    /**
     * Construct a FastList with a specified size.
-    * @param clazz the Class stored in the collection
+    *
+    * @param clazz    the Class stored in the collection
     * @param capacity the initial size of the FastList
     */
    @SuppressWarnings("unchecked")
-   public FastList(Class<?> clazz, int capacity)
-   {
+   public FastList(Class<?> clazz, int capacity) {
       this.elementData = (T[]) Array.newInstance(clazz, capacity);
       this.clazz = clazz;
    }
@@ -65,17 +63,14 @@ public final class FastList<T> implements List<T>, RandomAccess, Serializable
     * @param element the element to add
     */
    @Override
-   public boolean add(T element)
-   {
+   public boolean add(T element) {
       if (size < elementData.length) {
          elementData[size++] = element;
-      }
-      else {
+      } else {
          // overflow-conscious code
          final int oldCapacity = elementData.length;
          final int newCapacity = oldCapacity << 1;
-         @SuppressWarnings("unchecked")
-         final T[] newElementData = (T[]) Array.newInstance(clazz, newCapacity);
+         @SuppressWarnings("unchecked") final T[] newElementData = (T[]) Array.newInstance(clazz, newCapacity);
          System.arraycopy(elementData, 0, newElementData, 0, oldCapacity);
          newElementData[size++] = element;
          elementData = newElementData;
@@ -91,8 +86,7 @@ public final class FastList<T> implements List<T>, RandomAccess, Serializable
     * @return the element, or ArrayIndexOutOfBounds is thrown if the index is invalid
     */
    @Override
-   public T get(int index)
-   {
+   public T get(int index) {
       return elementData[index];
    }
 
@@ -103,8 +97,7 @@ public final class FastList<T> implements List<T>, RandomAccess, Serializable
     *
     * @return the last element of the list
     */
-   public T removeLast()
-   {
+   public T removeLast() {
       T element = elementData[--size];
       elementData[size] = null;
       return element;
@@ -118,8 +111,7 @@ public final class FastList<T> implements List<T>, RandomAccess, Serializable
     * @param element the element to remove
     */
    @Override
-   public boolean remove(Object element)
-   {
+   public boolean remove(Object element) {
       for (int index = size - 1; index >= 0; index--) {
          if (element == elementData[index]) {
             final int numMoved = size - index - 1;
@@ -138,8 +130,7 @@ public final class FastList<T> implements List<T>, RandomAccess, Serializable
     * Clear the FastList.
     */
    @Override
-   public void clear()
-   {
+   public void clear() {
       for (int i = 0; i < size; i++) {
          elementData[i] = null;
       }
@@ -153,31 +144,33 @@ public final class FastList<T> implements List<T>, RandomAccess, Serializable
     * @return the number of current elements
     */
    @Override
-   public int size()
-   {
+   public int size() {
       return size;
    }
 
-   /** {@inheritDoc} */
+   /**
+    * {@inheritDoc}
+    */
    @Override
-   public boolean isEmpty()
-   {
+   public boolean isEmpty() {
       return size == 0;
    }
 
-   /** {@inheritDoc} */
+   /**
+    * {@inheritDoc}
+    */
    @Override
-   public T set(int index, T element)
-   {
+   public T set(int index, T element) {
       T old = elementData[index];
       elementData[index] = element;
       return old;
    }
 
-   /** {@inheritDoc} */
+   /**
+    * {@inheritDoc}
+    */
    @Override
-   public T remove(int index)
-   {
+   public T remove(int index) {
       if (size == 0) {
          return null;
       }
@@ -194,168 +187,58 @@ public final class FastList<T> implements List<T>, RandomAccess, Serializable
       return old;
    }
 
-   /** {@inheritDoc} */
+   /**
+    * {@inheritDoc}
+    */
    @Override
-   public boolean contains(Object o)
-   {
+   public boolean contains(Object o) {
       throw new UnsupportedOperationException();
    }
 
-   /** {@inheritDoc} */
+   /**
+    * {@inheritDoc}
+    */
    @Override
-   public Iterator<T> iterator()
-   {
+   public Iterator<T> iterator() {
       return new Iterator<T>() {
          private int index;
 
          @Override
-         public boolean hasNext()
-         {
+         public boolean hasNext() {
             return index < size;
          }
 
          @Override
-         public T next()
-         {
+         public T next() {
             if (index < size) {
                return elementData[index++];
             }
 
-            throw new NoSuchElementException("No more elements in FastList"); 
+            throw new NoSuchElementException("No more elements in FastList");
          }
       };
    }
 
-   /** {@inheritDoc} */
+   @NotNull
    @Override
-   public Object[] toArray()
-   {
-      throw new UnsupportedOperationException();
+   public Object[] toArray() {
+      return elementData;
    }
 
-   /** {@inheritDoc} */
+   @NotNull
    @Override
-   public <E> E[] toArray(E[] a)
-   {
-      throw new UnsupportedOperationException();
+   public <T1> T1[] toArray(@NotNull T1[] a) {
+      System.arraycopy(elementData, 0, a, 0, elementData.length);
+      return a;
    }
 
-   /** {@inheritDoc} */
+   @NotNull
    @Override
-   public boolean containsAll(Collection<?> c)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public boolean addAll(Collection<? extends T> c)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public boolean addAll(int index, Collection<? extends T> c)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public boolean removeAll(Collection<?> c)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public boolean retainAll(Collection<?> c)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public void add(int index, T element)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public int indexOf(Object o)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public int lastIndexOf(Object o)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public ListIterator<T> listIterator()
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public ListIterator<T> listIterator(int index)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public List<T> subList(int fromIndex, int toIndex)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public Object clone()
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public void forEach(Consumer<? super T> action)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public Spliterator<T> spliterator()
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public boolean removeIf(Predicate<? super T> filter)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public void replaceAll(UnaryOperator<T> operator)
-   {
-      throw new UnsupportedOperationException();
-   }
-
-   /** {@inheritDoc} */
-   @Override
-   public void sort(Comparator<? super T> c)
-   {
-      throw new UnsupportedOperationException();
+   public FastList<T> subList(int fromIndex, int toIndex) {
+      final int size = toIndex - fromIndex;
+      FastList sub = new FastList<>(this.clazz, size);
+      sub.size = size;
+      System.arraycopy(this.elementData, fromIndex, sub.elementData, 0, size);
+      return sub;
    }
 }

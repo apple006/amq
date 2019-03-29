@@ -2,6 +2,7 @@ package com.artlongs.amq.admin;
 
 import com.artlongs.amq.core.Message;
 import com.artlongs.amq.core.Subscribe;
+import com.artlongs.amq.core.aio.plugin.MonitorPlugin;
 import com.artlongs.amq.core.store.Condition;
 import com.artlongs.amq.core.store.IStore;
 import com.artlongs.amq.core.store.Page;
@@ -14,7 +15,7 @@ import com.artlongs.amq.http.routes.Url;
 import java.util.Date;
 
 /**
- * Func :
+ * Func : MQ 后台管理查询
  *
  * @author: leeton on 2019/3/15.
  */
@@ -49,6 +50,20 @@ public class QueryController extends BaseController {
                 page, Message.class);
 
         return Render.json(page);
+    }
+
+    @Get("/dashboard")
+    public Render dashboard() {
+        return Render.template("/dashboard.html");
+    }
+
+    /**
+     * 当前的流量显示
+     * @return
+     */
+    @Get("/dashboard/curr")
+    public Render dashboardCurr() {
+        return Render.json(MonitorPlugin.dashboard);
     }
 
     public static void main(String[] args) {

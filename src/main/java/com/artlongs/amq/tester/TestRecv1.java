@@ -31,8 +31,8 @@ public class TestRecv1 {
         long s = System.currentTimeMillis();
         AtomicInteger count = new AtomicInteger(0);
         Call<Message> callback = (msg)->{
-            execBack(msg,s);
             logger.debug("nums :"+ count.incrementAndGet());
+            execBack(msg,s);
         };
         processor.subscribe("topic_hello",callback);
 

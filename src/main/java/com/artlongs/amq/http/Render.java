@@ -23,6 +23,7 @@ public class Render<T> implements HttpHandler, Controller, Serializable {
     private String templateUrl;
     private T params;
     private Fmt fmt;
+    private static final String root = "views";
 
     public Render(String templateUrl, T params) {
         this.templateUrl = templateUrl;
@@ -69,6 +70,9 @@ public class Render<T> implements HttpHandler, Controller, Serializable {
     @SuppressWarnings("unchecked")
     private static byte[] read(String url) {
         InputStream inputStream = null;
+        if(url.startsWith("/"+root)){
+            url = url.replace("/"+root, "");
+        }
         try {
             Path path = Paths.get(getHomePath().getPath() + url);
             inputStream = Files.newInputStream(path);
@@ -95,7 +99,7 @@ public class Render<T> implements HttpHandler, Controller, Serializable {
      */
     private static File getHomePath() {
         try {
-            URL url = Thread.currentThread().getContextClassLoader().getResource("views");
+            URL url = Thread.currentThread().getContextClassLoader().getResource(root);
             if (null != url) return new File(url.getPath());
         } catch (Exception e) {
             e.printStackTrace();
@@ -105,11 +109,13 @@ public class Render<T> implements HttpHandler, Controller, Serializable {
     }
 
     private void setHeadOfFmt(HttpResponse resp) {
-        if (Fmt.json == this.fmt) {
-            resp.setHeader("Content-Type", "application/json; charset=utf-8");
-        }
-        if (Fmt.html == this.fmt) {
-            resp.setHeader("Content-Type", "text/html; charset=utf-8");
+        switch (this.fmt) {
+            case html:
+                resp.setHeader("Content-Type", "text/html; charset=utf-8");
+                break;
+            case json:
+                resp.setHeader("Content-Type", "application/json; charset=utf-8");
+                break;
         }
     }
 

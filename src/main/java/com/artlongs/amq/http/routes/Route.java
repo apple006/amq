@@ -157,7 +157,8 @@ public class Route {
 
         int methodParmsNums = method.getParameterCount();
         if (methodParmsNums != req.params().size()) {
-            throw new RuntimeException("Parameter mismatch.");
+            logger.error("Parameters size mismatch.methodParmsNums:{}, Request params:{}",methodParmsNums,req.params().size());
+            throw new RuntimeException(" Parameters size mismatch.");
         }
 
         return method.invoke(parent, getDefParamArr(types, req.params()));

@@ -4,6 +4,7 @@ import com.artlongs.amq.core.Message;
 import com.artlongs.amq.core.MqConfig;
 import com.artlongs.amq.core.Subscribe;
 import com.artlongs.amq.serializer.ISerializer;
+import com.artlongs.amq.tools.FastList;
 import com.artlongs.amq.tools.ID;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
@@ -13,10 +14,7 @@ import org.mapdb.serializer.GroupSerializer;
 import org.osgl.util.C;
 import org.osgl.util.S;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -84,7 +82,7 @@ public enum Store implements IStore {
         if (S.empty(key)) return false;
         getMapBy(dbName).putIfAbsent(key, serializer.toByte(obj));
         getDB(dbName).commit();
-        removeFilterListCache(dbName,getTopic(obj));
+        removeFilterListCache(dbName, getTopic(obj));
         return true;
     }
 
@@ -99,8 +97,8 @@ public enum Store implements IStore {
     }
 
     @Override
-    public <T> List<T> getAll(String dbName, Class<T> tClass) {
-        List<T> list = C.newList();
+    public <T> FastList<T> getAll(String dbName, Class<T> tClass) {
+        FastList<T> list = new FastList<>(tClass, 200_000);
         for (Object o : getMapBy(dbName).values()) {
             list.add(serializer.getObj((byte[]) o, tClass));
         }
@@ -108,8 +106,8 @@ public enum Store implements IStore {
     }
 
     public <T> List<T> list(String dbName, int pageNumber, int pageSize, Class<T> tClass) {
-        List<T> result = C.newList();
-        List<T> allList = getAll(dbName, tClass);
+        FastList<T> result = new FastList<>(tClass, 200_000);
+        FastList<T> allList = getAll(dbName, tClass);
         // filter of page
         int total = allList.size();
         int first = Page.first(pageNumber, pageSize);
@@ -118,50 +116,59 @@ public enum Store implements IStore {
         for (int i = first; i < limit; i++) {
             result.add(iter.next());
         }
+        clearList(allList);
         return result;
     }
 
     public <T> Page<T> getPage(String dbName, Condition<T> topicFilter, Condition<T> timeFilter, Page page, Class<T> tClass) {
-        List<T> result = C.newList();
-        List<T> filteredList = C.newList();
-        // filter of condition
-        filteredList = filterByCondition(dbName, topicFilter, timeFilter, tClass);
+        List<T> result = new ArrayList<>(1000);
         // filter of page
-        filterByPage(page, filteredList, result);
-        page.setItems(result);
+        filterByPage(page, filterByCondition(dbName, topicFilter, timeFilter, tClass));
+
         return page;
     }
 
-    private <T> void filterByPage(Page page, List<T> oldList, List<T> result) {
+    private <T> void filterByPage(Page page, List<T> oldList) {
         int total = oldList.size();
         page.setTotal(total);
         int first = page.first();
-        int limit = page.limit();
-        Iterator<T> iter = oldList.iterator();
-        for (int i = first; i < limit; i++) {
-            result.add(iter.next());
-        }
+        int limit = first + page.limit();
+        List<T> items = oldList.subList(first, limit);
+        page.setItems(items);
     }
 
-    private <T> List<T> filterByCondition(String dbName,Condition<T> topicFilter, Condition<T> timeFilter, Class<T> tClass) {
-        List<T> filteredList = C.newList();
+    /**
+     * 按条件过滤
+     *
+     * @param dbName      数据库名
+     * @param topicFilter 主题过滤条件
+     * @param timeFilter  时间过滤条件
+     * @param tClass
+     * @param <T>
+     * @return
+     */
+    private <T> List<T> filterByCondition(String dbName, Condition<T> topicFilter, Condition<T> timeFilter, Class<T> tClass) {
+        List<T> filteredList = new ArrayList<>(10000);
         int filterKey = Condition.hashCondition(dbName, topicFilter, timeFilter);
         filteredList = filterListCache.get(filterKey); // 从缓存里找一下,看相同的条件之前是不是已经查询过.
         if (C.isEmpty(filteredList)) { //
-            List<T> allList = getAll(dbName, tClass);
+            FastList<T> allList = getAll(dbName, tClass);
             // filter of condition ...
             if (timeFilter != null) {
                 filteredList = allList.stream().filter(topicFilter.getPredicate()).filter(timeFilter.getPredicate()).collect(Collectors.toList());
             } else {
                 filteredList = allList.stream().filter(topicFilter.getPredicate()).collect(Collectors.toList());
             }
-            filterListCache.putIfAbsent(filterKey, filteredList);
+            if (C.notEmpty(filteredList)) {
+                filterListCache.putIfAbsent(filterKey, filteredList);
+            }
         }
         return filteredList;
     }
 
     /**
      * 删除缓存的结果集
+     *
      * @param dbName
      * @param topic
      */
@@ -174,30 +181,12 @@ public enum Store implements IStore {
         }
     }
 
-
-
-
     @Override
     public void remove(String dbName, String key) {
         getMapBy(dbName).remove(key);
         getDB(dbName).commit();
     }
 
-    @Override
-    public <T> List<T> find(String dbName, String topic, Class<T> tClass) {
-        BTreeMap map = getMapBy(dbName);
-        List<T> list = C.newList();
-        for (Object o : map.values()) {
-            T obj = serializer.getObj((byte[]) o, tClass);
-            if (obj instanceof Message) {
-                if (((Message) obj).getK().getTopic().startsWith(topic)) list.add(obj);
-            }
-            if (obj instanceof Subscribe) {
-                if (((Subscribe) obj).getTopic().startsWith(topic)) list.add(obj);
-            }
-        }
-        return list;
-    }
 
     private String getTopic(Object obj) {
         if (obj instanceof Message) {
@@ -209,6 +198,10 @@ public enum Store implements IStore {
         return "";
     }
 
+    private void clearList(List list) {
+        list.clear();
+        list = null;
+    }
 
 
     public static void main(String[] args) {
@@ -216,8 +209,6 @@ public enum Store implements IStore {
         Store.INST.save(IStore.mq_all_data, msg.getK().getId(), msg);
         System.err.println(Store.INST.<Message>get(IStore.mq_all_data, msg.getK().getId(), Message.class));
         System.err.println(Store.INST.<Message>getAll(IStore.mq_all_data, Message.class));
-        System.err.println(Store.INST.<Message>find(IStore.mq_all_data, msg.getK().getTopic(), Message.class));
-
     }
 
 

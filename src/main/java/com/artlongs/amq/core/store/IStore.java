@@ -52,16 +52,10 @@ public interface IStore {
 
     <T> List<T> getAll(String dbName,Class<T> tClass);
 
+    <T> List<T> list(String dbName, int pageNumber, int pageSize, Class<T> tClass);
+
+    <T> Page<T> getPage(String dbName, Condition<T> topicFilter, Condition<T> timeFilter, Page page, Class<T> tClass);
+
     void remove(String dbName,String key);
-
-    /**
-     * 查询信息
-     * @param dbName 数据库名
-     * @param topic  主题
-     * @param <T>    存储的对象类型
-     * @return
-     */
-    <T> List<T> find(String dbName, String topic,Class<T> tClass);
-
 
 }
