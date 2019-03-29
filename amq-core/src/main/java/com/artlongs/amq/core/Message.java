@@ -11,6 +11,7 @@ import java.util.Set;
  * FUNC: Mq message
  * Created by leeton on 2018/12/13.
  */
+@SuppressWarnings("unchecked")
 public class Message<K extends Message.Key, V> implements KV<K, V> {
     private static final long serialVersionUID = 1L;
 
