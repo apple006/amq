@@ -25,7 +25,7 @@
             <version>${act.version}</version>
 
             <exclusions>
-                <exclusion>
+<!--                <exclusion>
                     <groupId>org.osgl</groupId>
                     <artifactId>osgl-tool</artifactId>
                 </exclusion>
@@ -36,7 +36,7 @@
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
-                </exclusion>
+                </exclusion>-->
             </exclusions>
         </dependency>
 
