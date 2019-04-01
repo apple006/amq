@@ -27,11 +27,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>4.12</junit.version>
         <joda-time.version>2.9.3</joda-time.version>
-        <guava.version>15.0</guava.version>
-        <jackson.version>2.8.9</jackson.version>
-        <slf4j.version>1.7.5</slf4j.version>
+        <slf4j.version>1.7.25</slf4j.version>
         <log4j.version>1.2.17</log4j.version>
-        <logback.version>1.1.2</logback.version>
+        <logback.version>1.2.3</logback.version>
+        <osgl-tool.version>1.19.1</osgl-tool.version>
     </properties>
 
     <dependencies>
@@ -58,7 +57,7 @@
         <dependency>
             <groupId>org.osgl</groupId>
             <artifactId>osgl-tool</artifactId>
-            <version>1.19.0</version>
+            <version>${osgl-tool.version}</version>
         </dependency>
     </dependencies>
 

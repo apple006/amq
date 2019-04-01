@@ -18,7 +18,7 @@ public class HttpServerConfig {
 	public static final Pool<ByteBuffer> bufferPool= Pool.MEDIUM_DIRECT;
 
 	public static Charset charsets = StandardCharsets.UTF_8;
-	public static int port = 8080;
+	public static int port = 8889;
 	public static String host = "0.0.0.0";
 	public static int maxConnection = 100;
 	public static int maxConcurrent = 100;

@@ -45,7 +45,7 @@ public enum MqConfig {
     public int msg_not_acked_resend_max_times = 0;
 
     //开启重发-->发送失败的消息
-    public boolean start_msg_falt_message_resendf = false;
+    public boolean start_msg_falt_message_resend = false;
     // 间隔x秒,发送失败的消息重发间隔
     public int msg_falt_message_resend_period = 60;
     //发送失败的消息重发的最大次数

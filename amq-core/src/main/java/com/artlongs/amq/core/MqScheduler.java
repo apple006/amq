@@ -90,7 +90,7 @@ public enum MqScheduler {
         final Runnable retry = new Runnable() {
             @Override
             public void run() {
-                if (MqConfig.inst.start_msg_falt_message_resendf) {
+                if (MqConfig.inst.start_msg_falt_message_resend) {
                     ConcurrentSkipListMap<String, Message> cache_falt_message = ProcessorImpl.INST.getCache_falt_message();
                     if (C.isEmpty(cache_falt_message)) {
                         final List<Message> retryList = Store.INST.getAll(IStore.mq_need_retry, Message.class);

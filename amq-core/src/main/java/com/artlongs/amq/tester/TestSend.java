@@ -25,7 +25,7 @@ public class TestSend {
             }
         });
         MqClientProcessor processor = new MqClientProcessor();
-        AioMqClient<Message> client = new AioMqClient(MqConfig.inst.host, MqConfig.inst.port, new MqProtocol(), processor);
+        AioMqClient<Message> client = new AioMqClient(new MqProtocol(), processor);
         client.start(asynchronousChannelGroup);
         Thread t = new Thread(client);
         t.setDaemon(true);

@@ -24,7 +24,7 @@ public class TestPong {
             }
         });
         MqClientProcessor processor = new MqClientProcessor();
-        AioMqClient<Message> client = new AioMqClient(MqConfig.inst.host, MqConfig.inst.port, new MqProtocol(), processor);
+        AioMqClient<Message> client = new AioMqClient(new MqProtocol(), processor);
         Thread t = new Thread(client);
         t.setDaemon(true);
         pool.submit(t);

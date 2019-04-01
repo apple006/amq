@@ -51,12 +51,12 @@ public class MqClientProcessor extends AioBaseProcessor<ByteBuffer> implements M
     }
 
     @Override
-    public void subscribe(String topic, Call callBack) {
+    public <V>void subscribe(String topic, Call<V> callBack) {
         subscribe(topic, null, callBack);
     }
 
     @Override
-    public <V> void subscribe(String topic, V v, Call callBack) {
+    public <V> void subscribe(String topic, V v, Call<V> callBack) {
         Message subscribe = Message.buildSubscribe(topic, v, getNode(), Message.Life.ALL_ACKED, Message.Listen.CALLBACK);
         write(subscribe);
         callBackMap.put(subscribe.getSubscribeId(), callBack);

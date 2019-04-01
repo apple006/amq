@@ -4,6 +4,7 @@
 # ide project file
 .idea\*
 .idea\**
+*.iml
 
 
 # Log file

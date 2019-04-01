@@ -42,18 +42,10 @@
     </profiles>
 
     <properties>
-        <jdk.version>1.8</jdk.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.version>4.12</junit.version>
-        <joda-time.version>2.9.3</joda-time.version>
-        <guava.version>15.0</guava.version>
-        <jackson.version>2.8.9</jackson.version>
-        <slf4j.version>1.7.5</slf4j.version>
-        <log4j.version>1.2.17</log4j.version>
-        <logback.version>1.1.2</logback.version>
         <mapdb.version>3.0.7</mapdb.version>
         <fst.version>2.56</fst.version>
     </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.mapdb</groupId>
