@@ -43,7 +43,7 @@
             <!-- AMQ -->
             <dependency>
                 <groupId>com.artlongs.amq</groupId>
-                <artifactId>artlongs-core</artifactId>
+                <artifactId>amq-core</artifactId>
                 <version>0.0.1-snapshot</version>
             </dependency>
 
