@@ -39,11 +39,11 @@ public class RingBufferQueue<T> implements Iterable {
         this.items = (T[]) Array.newInstance(Object.class, capacity);
     }
 
-    public Boolean empty() {
+    public Boolean isEmpty() {
         return head == tail;
     }
-    public Boolean notEmpty() {
-        return !empty();
+    public Boolean isNotEmpty() {
+        return !isEmpty();
     }
 
     public Boolean full() {
@@ -83,7 +83,7 @@ public class RingBufferQueue<T> implements Iterable {
      * @return
      */
     public T pop() {
-        if (empty()) {
+        if (isEmpty()) {
             return null;
         }
         T item = items[head];
@@ -151,7 +151,7 @@ public class RingBufferQueue<T> implements Iterable {
 
     public List<T> asList() {
         final List<T> list = new ArrayList<>(size());
-        if (empty()) return list;
+        if (isEmpty()) return list;
         for (T item : items) {
             list.add(item);
         }

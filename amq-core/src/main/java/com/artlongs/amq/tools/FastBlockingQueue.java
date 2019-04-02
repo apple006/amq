@@ -81,7 +81,7 @@ public final class FastBlockingQueue {
         return count;
     }
 
-    public ByteBuffer poll() {
+    public ByteBuffer pop() {
         lock.lock();
         try {
             return (count == 0) ? null : dequeue();
@@ -90,7 +90,7 @@ public final class FastBlockingQueue {
         }
     }
 
-    public void pollInto(ByteBuffer destBuffer) {
+    public void popInto(ByteBuffer destBuffer) {
         lock.lock();
         try {
             while (destBuffer.hasRemaining()) {
@@ -108,5 +108,12 @@ public final class FastBlockingQueue {
         } finally {
             lock.unlock();
         }
+    }
+
+    public boolean isEmpty(){
+        return size()==0;
+    }
+    public boolean isNotEmpty(){
+        return size()>0;
     }
 }

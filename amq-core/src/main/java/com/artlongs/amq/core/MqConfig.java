@@ -26,9 +26,9 @@ public enum MqConfig {
     //读取数据的行等侍时长(秒)
     public int read_wait_timeout = 3;
     // 客户端的连接线程池大小(2的倍数)
-    public int client_connect_thread_pool_size = 2000;
+    public int client_connect_thread_pool_size = 128;
     // 服务端的连接线程池大小(2的倍数)
-    public int server_connect_thread_pool_size = 2000;
+    public int server_connect_thread_pool_size = 2048;
     // 工作线程池大小(2的倍数)
     public int worker_thread_pool_size = 128;
     // 工作线程最大时长(秒)

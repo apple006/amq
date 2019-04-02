@@ -61,7 +61,8 @@ public class AioPipe<T> implements Serializable {
     /**
      * 响应消息缓存队列。
      */
-    private FastBlockingQueue writeCacheQueue;
+    protected FastBlockingQueue writeCacheQueue;
+    protected FastBlockingQueue readCacheQueue;
     private Reader<T> reader;
     private Writer<T> writer;
     private AioServerConfig<T> ioServerConfig;
@@ -79,6 +80,7 @@ public class AioPipe<T> implements Serializable {
         this.reader = reader;
         this.writer = writer;
         this.writeCacheQueue = config.getQueueSize() > 0 ? new FastBlockingQueue(config.getQueueSize()) : null;
+        this.readCacheQueue = config.getQueueSize() > 0 ? new FastBlockingQueue(config.getQueueSize()) : null;
         this.ioServerConfig = config;
         //触发状态机
         config.getProcessor().stateEvent(this, State.NEW_PIPE, null);
@@ -162,7 +164,7 @@ public class AioPipe<T> implements Serializable {
             flowControl = true;
             ioServerConfig.getProcessor().stateEvent(this, State.FLOW_LIMIT, null);
         }
-        return true;
+        return size>=0;
     }
 
 
@@ -190,7 +192,7 @@ public class AioPipe<T> implements Serializable {
 
         // 从队列读取 buffer
         if (writeCacheQueue.size()>0) {
-            writeBuffer = writeCacheQueue.poll();
+            writeBuffer = writeCacheQueue.pop();
             writeBuffer.rewind();
         }
 
@@ -214,6 +216,10 @@ public class AioPipe<T> implements Serializable {
         if (flowControl || !readSemaphore.tryAcquire()) {
             return;
         }
+        if (readCacheQueue.isEmpty()) {
+            return;
+        }
+        readBuffer= readCacheQueue.pop();
         readBuffer.flip();
         while (readBuffer.hasRemaining()) {
             T dataEntry = null;
@@ -258,7 +264,6 @@ public class AioPipe<T> implements Serializable {
         }
         continueRead();
     }
-
 
     protected void continueRead() {
         readFromChannel0(readBuffer);

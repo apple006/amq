@@ -52,7 +52,7 @@ public enum MqScheduler {
                 if (MqConfig.inst.start_msg_not_acked_resend) {
 
                     RingBufferQueue<Subscribe> cache_subscribe = ProcessorImpl.INST.getCache_subscribe();
-                    if (cache_subscribe.empty()) { // 从 DB 恢复所有订阅
+                    if (cache_subscribe.isEmpty()) { // 从 DB 恢复所有订阅
                         final List<Subscribe> retryList = Store.INST.getAll(IStore.mq_subscribe, Subscribe.class);
                         for (Subscribe o : retryList) {
                             cache_subscribe.putIfAbsent(o);

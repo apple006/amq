@@ -4,9 +4,8 @@ import com.artlongs.amq.core.*;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.channels.AsynchronousChannelGroup;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Func :
@@ -18,12 +17,12 @@ public class AmqClient extends MqClientProcessor {
 
     public AmqClient() {
         try {
-            ExecutorService pool = Executors.newFixedThreadPool(MqConfig.inst.client_connect_thread_pool_size);
+            final int threadSize = MqConfig.inst.client_connect_thread_pool_size;
+            AsynchronousChannelGroup channelGroup = AsynchronousChannelGroup.withFixedThreadPool(threadSize, (r)->new Thread(r));
             AioMqClient<Message> client = new AioMqClient(new MqProtocol(), this);
             Thread t = new Thread(client);
             t.setDaemon(true);
-            pool.submit(t);
-            client.start();
+            client.start(channelGroup);
 
         } catch (IOException e) {
             e.printStackTrace();

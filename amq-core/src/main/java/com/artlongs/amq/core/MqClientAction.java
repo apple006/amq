@@ -13,7 +13,7 @@ public interface MqClientAction {
     <V> Message publishJob(String topic, V v);
 
     <V> void acceptJob(String topic,Call<V> acceptJobThenExecute);
-//    <V> boolean finishJob(String topic, V v,Message acceptJob);
+    <V> boolean finishJob(String topic, V v,Message acceptJob);
 
     <V> boolean onlyPublish(String topic, V v);
 
@@ -25,8 +25,5 @@ public interface MqClientAction {
      * @return
      */
     boolean ack(String messageId, Message.Life life);
-
-
-    <V> boolean finishJob(String topic, V v, Message acceptJob);
 
 }
