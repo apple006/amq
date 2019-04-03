@@ -7,7 +7,6 @@ import com.artlongs.amq.core.event.JobEvent;
 import com.artlongs.amq.core.event.JobEvnetHandler;
 import com.artlongs.amq.core.event.StoreEventHandler;
 import com.artlongs.amq.core.store.IStore;
-import com.artlongs.amq.core.store.Store;
 import com.artlongs.amq.disruptor.*;
 import com.artlongs.amq.disruptor.dsl.Disruptor;
 import com.artlongs.amq.disruptor.dsl.ProducerType;
@@ -25,7 +24,10 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Func : 消息处理中心
@@ -271,7 +273,7 @@ public enum ProcessorImpl implements Processor {
     }
 
     /**
-     * 消息类型为 {@link Message.Type.PUBLISH_JOB} 时,自动为它创建一个订阅,以收取任务结果
+     * 消息类型为 {@link com.artlongs.amq.core.Message.Type#PUBLISH_JOB} 时,自动为它创建一个订阅,以收取任务结果
      * NOTE: 这里是实时的收取任务结果,所以不需要保存到硬盘
      *
      * @param pipe
@@ -419,7 +421,7 @@ public enum ProcessorImpl implements Processor {
     private void onSendFailToBackup(Message message) {
         message.getStat().setOn(Message.ON.SENDONFAIL);
         String id = message.getK().getId();
-        Store.INST.save(IStore.mq_need_retry, id, message);
+        IStore.instOf().save(IStore.mq_need_retry, id, message);
         cache_common_publish_message.remove(id);
         cache_falt_message.putIfAbsent(id, message);
     }
@@ -459,9 +461,9 @@ public enum ProcessorImpl implements Processor {
     }
 
     public void removeDbDataOfDone(String key) {
-        Store.INST.remove(IStore.mq_all_data, key);
-        Store.INST.remove(IStore.mq_need_retry, key);
-        Store.INST.remove(IStore.mq_common_publish, key);
+        IStore.instOf().remove(IStore.mq_all_data, key);
+        IStore.instOf().remove(IStore.mq_need_retry, key);
+        IStore.instOf().remove(IStore.mq_common_publish, key);
     }
 
     private void removeSubscribeCacheOnAck(String ackId) {
@@ -485,7 +487,7 @@ public enum ProcessorImpl implements Processor {
     }
 
     public void removeSubscribeOfDB(String subscribeId) {
-        Store.INST.remove(IStore.mq_subscribe, subscribeId);
+        IStore.instOf().remove(IStore.mq_subscribe, subscribeId);
     }
 
     private boolean isPublishJob(Message message) {

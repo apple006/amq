@@ -23,7 +23,7 @@ public class TestSend {
         client.start(channelGroup);
 
         long s = System.currentTimeMillis();
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 10; i++) {
             TestUser user = new TestUser(i, "alice");
             processor.onlyPublish("topic_hello", user);
             Thread.sleep(0,500);

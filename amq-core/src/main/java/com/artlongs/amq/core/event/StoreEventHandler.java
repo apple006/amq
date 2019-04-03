@@ -3,7 +3,6 @@ package com.artlongs.amq.core.event;
 import com.artlongs.amq.core.Message;
 import com.artlongs.amq.core.Subscribe;
 import com.artlongs.amq.core.store.IStore;
-import com.artlongs.amq.core.store.Store;
 import com.artlongs.amq.disruptor.WorkHandler;
 import org.osgl.util.S;
 import org.slf4j.Logger;
@@ -24,20 +23,20 @@ public class StoreEventHandler implements WorkHandler<JobEvent> {
         if(event.isStoreAllMsg()){ // 开启了保存所有消息
             if (message != null) {
                 logger.debug("[S]执行消息保存到硬盘(ALL) ......");
-                Store.INST.save(IStore.mq_all_data, message.getK().getId(), message);
+                IStore.instOf().save(IStore.mq_all_data, message.getK().getId(), message);
             }
         }else {
             if (message != null) {
                 String dbName = getDbNameByMsgType(message);
                 if (S.noBlank(dbName)) {
                     logger.debug("[S]执行消息保存到硬盘({}).",dbName);
-                    Store.INST.save(dbName,message.getK().getId(), message);
+                    IStore.instOf().save(dbName,message.getK().getId(), message);
                 }
             }
             Subscribe subscribe = event.getSubscribe();
             if (subscribe != null) {
                 logger.debug("[S]执行消息保存到硬盘(subscribe) ......");
-                Store.INST.save(IStore.mq_subscribe,subscribe.getId(), subscribe);
+                IStore.instOf().save(IStore.mq_subscribe,subscribe.getId(), subscribe);
             }
         }
 

@@ -1,8 +1,7 @@
 package com.artlongs.amq.http;
 
-import com.artlongs.amq.tools.io.Pool;
+import com.artlongs.amq.core.MqConfig;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
@@ -12,19 +11,10 @@ import java.nio.charset.StandardCharsets;
 *
 */
 public class HttpServerConfig {
-	/**
-	 * 创建一个全局的 ByteBuffer Pool
-	 */
-	public static final Pool<ByteBuffer> bufferPool= Pool.MEDIUM_DIRECT;
-
 	public static Charset charsets = StandardCharsets.UTF_8;
-	public static int port = 8889;
-	public static String host = "0.0.0.0";
+	public static int port = MqConfig.inst.admin_http_port;
+	public static String host = MqConfig.inst.host;
 	public static int maxConnection = 100;
-	public static int maxConcurrent = 100;
-	public static int readWait = 3;
-	public static int requestWait = 300;
-	public static int threadPoolSize=20;
-	public static int connectTimeout = 3;
+
 
 }

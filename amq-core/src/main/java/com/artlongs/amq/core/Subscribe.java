@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Func :订阅(消息中收内部使用), Message 的简化版本
+ * Func :订阅(消息中心内部使用), Message 的简化版本
  *
  * @author: leeton on 2019/1/23.
  */

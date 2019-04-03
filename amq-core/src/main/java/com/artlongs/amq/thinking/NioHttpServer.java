@@ -57,7 +57,7 @@ public class NioHttpServer  {
     public void loop() {
         try {
             while (true) {
-                if (selector.select(config.connectTimeout) == 0) {
+                if (selector.select(3) == 0) {
                     continue;
                 }
                 Iterator<SelectionKey> iter = selector.selectedKeys().iterator();

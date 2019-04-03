@@ -106,7 +106,8 @@ public class AioMqServer {
             sc.useDelimiter("/n");
             System.out.println();
             System.out.println("=======================================");
-            System.out.println("AMQ已启动,如果想退出,请输入命令: quit");
+            System.out.println("AMQ已启动,(消息端口:"+MqConfig.inst.port+"),(管理端口:"+MqConfig.inst.admin_http_port+")");
+            System.out.println("如果想安全退出,请输入命令: quit");
             System.out.println("=======================================");
             System.out.println();
             String quit = sc.nextLine();

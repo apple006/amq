@@ -81,7 +81,7 @@ public class MqClientProcessor extends AioBaseProcessor<ByteBuffer> implements M
     }
 
     @Override
-    public void acceptJob(String topic, Call acceptJobThenExecute) {
+    public <V> void acceptJob(String topic, Call<V> acceptJobThenExecute) {
         Message subscribe = Message.buildAcceptJob(topic, getNode());
         write(subscribe);
         callBackMap.put(subscribe.getSubscribeId(), acceptJobThenExecute);

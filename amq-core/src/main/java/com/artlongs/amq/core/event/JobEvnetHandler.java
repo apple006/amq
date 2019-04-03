@@ -1,18 +1,16 @@
 package com.artlongs.amq.core.event;
 
 import com.artlongs.amq.core.Message;
-import com.artlongs.amq.core.MqConfig;
 import com.artlongs.amq.core.ProcessorImpl;
-import com.artlongs.amq.core.aio.AioPipe;
 import com.artlongs.amq.disruptor.EventHandler;
 import com.artlongs.amq.serializer.ISerializer;
-import com.artlongs.amq.tools.io.Buffers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 
 /**
- * Func :
+ * Func : 消息任务的分派
  *
  * @author: leeton on 2019/2/13.
  */

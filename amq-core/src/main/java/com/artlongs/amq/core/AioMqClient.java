@@ -18,6 +18,9 @@ public class AioMqClient<T> extends AioClient<T> {
 
     private AioPipe aioPipe;
 
+    public AioMqClient(String host,String port,Protocol<T> protocol, AioProcessor<T> messageProcessor) {
+        super(MqConfig.inst.host, MqConfig.inst.port, protocol, messageProcessor);
+    }
     public AioMqClient(Protocol<T> protocol, AioProcessor<T> messageProcessor) {
         super(MqConfig.inst.host, MqConfig.inst.port, protocol, messageProcessor);
     }

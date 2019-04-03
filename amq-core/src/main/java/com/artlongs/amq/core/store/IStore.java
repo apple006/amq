@@ -1,20 +1,19 @@
 package com.artlongs.amq.core.store;
 
-import org.mapdb.BTreeMap;
-import org.mapdb.DB;
-import org.mapdb.serializer.GroupSerializer;
-
 import java.util.List;
 
 /**
- * Func :
+ * Func :持久化
  *
  * @author: leeton on 2019/3/13.
  */
 public interface IStore {
+    static IStore instOf(){//预留有其它持久化实现的可能
+        return Store.INST;
+    }
 
     /**
-     * 所有的数据备份
+     * 所有的数据备份(感觉没有必要)
      */
     String mq_all_data = "mq_all_data.db";
 
@@ -23,28 +22,14 @@ public interface IStore {
      */
     String mq_need_retry = "mq_need_retry.db";
     /**
-     * 订阅数据备份
+     * 订阅者数据备份
      */
     String mq_subscribe = "mq_subscribe.db";
 
+    /**
+     * 生产者消息备份
+     */
     String mq_common_publish = "mq_common_publish_message.db";
-
-    /**
-     * 创建数据库
-     * @param dbName
-     * @return
-     */
-    DB markDb(String dbName);
-
-    /**
-     * 创建数据库对应的 MAP
-     * @param dbName
-     * @param seriaType
-     * @return
-     */
-    BTreeMap markMap(String dbName, GroupSerializer seriaType);
-
-    BTreeMap getMapBy(String dbName);
 
     <T> boolean save(String dbName,String key, T obj);
 

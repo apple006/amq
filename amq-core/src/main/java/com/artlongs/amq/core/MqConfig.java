@@ -22,6 +22,7 @@ public enum MqConfig {
 
     public String host = "127.0.0.1";
     public int port = 8888;
+    public int admin_http_port=8889;
     //========================== MQ ITME =====================================
     //读取数据的行等侍时长(秒)
     public int read_wait_timeout = 3;
@@ -42,19 +43,19 @@ public enum MqConfig {
     // 间隔x秒,重发未签收消息
     public int msg_not_acked_resend_period = 10;
     // 重发未签收消息的最大次数
-    public int msg_not_acked_resend_max_times = 0;
+    public int msg_not_acked_resend_max_times = 3;
 
     //开启重发-->发送失败的消息
     public boolean start_msg_falt_message_resend = false;
     // 间隔x秒,发送失败的消息重发间隔
     public int msg_falt_message_resend_period = 60;
     //发送失败的消息重发的最大次数
-    public int msg_falt_message_resend_max_times = 0;
+    public int msg_falt_message_resend_max_times = 3;
 
     //订阅的缓存队列容量
     public int mq_subscribe_quene_cache_sizes = 1024;
 
-    //保存所有的消息(持久化)
+    //保存所有的消息(持久化),(感觉没有必要)
     public boolean start_store_all_message_to_db = false;
     // 消息的默认存活时间(秒)
     public long msg_default_alive_time_second = 86400;

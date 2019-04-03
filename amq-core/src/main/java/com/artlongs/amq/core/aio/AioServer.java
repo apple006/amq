@@ -17,7 +17,6 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 /**
@@ -82,12 +81,7 @@ public class AioServer<T> implements Runnable {
         if (config.isBannerEnabled()) {
             LOGGER.info(config.BANNER + "\r\n :: amq-socket ::\t(" + config.VERSION + ")");
         }
-        start0(new Function<AsynchronousSocketChannel, AioPipe<T>>() {
-            @Override
-            public AioPipe<T> apply(AsynchronousSocketChannel channel) {
-                return new AioPipe<T>(channel, config, reader, writer);
-            }
-        });
+        start0((AsynchronousSocketChannel channel)->new AioPipe<T>(channel, config, reader, writer));
     }
 
     /**
