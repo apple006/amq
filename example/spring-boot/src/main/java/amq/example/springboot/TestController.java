@@ -1,12 +1,13 @@
-package com.artlongs.mq;
+package amq.example.springboot;
 
-import act.controller.Controller;
 import com.artlongs.amq.core.Message;
 import com.artlongs.amq.core.MqClientAction;
 import com.artlongs.amq.tester.TestUser;
-import org.osgl.mvc.annotation.GetAction;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import javax.inject.Inject;
+import javax.annotation.Resource;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,14 +17,14 @@ import java.util.Map;
  *
  * @author: leeton on 2019/4/1.
  */
-@Controller
+@RestController
 public class TestController {
 
-    @Inject
+    @Resource
     private MqClientAction amqClient;
 
-    @GetAction("/")
-    public String hello(){
+    @RequestMapping("/")
+    public String hello(Model model){
         return "Are u ok?";
     }
 
@@ -32,7 +33,7 @@ public class TestController {
      * 接收一个 JOB,完成后反馈结果给 JOB 发布者
      * @return
      */
-    @GetAction("/acceptjob")
+    @RequestMapping("/acceptjob")
     public String rec(){
         TestUser user = new TestUser(2, "alice");
         String jobTopc = "topic_get_userById";
@@ -54,7 +55,7 @@ public class TestController {
      * 发布一个工作任务
      * @return
      */
-    @GetAction("/sendjob")
+    @RequestMapping("/sendjob")
     public Map send(){
         Map<String, Object> result = new HashMap<>();
         Message message = amqClient.publishJob("topic_get_userById",2);

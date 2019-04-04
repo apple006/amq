@@ -1,4 +1,4 @@
-package com.artlongs;
+package amq.example.springboot;
 
 import com.artlongs.amq.core.*;
 import org.springframework.stereotype.Component;

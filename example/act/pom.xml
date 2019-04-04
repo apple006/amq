@@ -14,7 +14,7 @@
     <version>0.0.1-snapshot</version>
 
     <properties>
-        <app.entry>com.artlongs.amq.example.act.AppStart</app.entry>
+        <app.entry>amq.example.act.AppStart</app.entry>
         <act.version>1.8.19</act.version>
     </properties>
 

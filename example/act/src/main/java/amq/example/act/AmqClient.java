@@ -1,4 +1,4 @@
-package com.artlongs.mq;
+package amq.example.act;
 
 import com.artlongs.amq.core.*;
 

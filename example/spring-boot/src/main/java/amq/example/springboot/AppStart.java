@@ -1,4 +1,4 @@
-package com.artlongs;
+package amq.example.springboot;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

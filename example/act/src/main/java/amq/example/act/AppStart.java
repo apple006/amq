@@ -1,4 +1,4 @@
-package com.artlongs.mq;
+package amq.example.act;
 
 import act.Act;
 
@@ -16,6 +16,6 @@ public class AppStart {
      * @throws Exception
      */
       public static void main(String[] args) throws Exception {
-        Act.start("AMQ","com.artlongs.mq");
+        Act.start("AMQ");
     }
 }
