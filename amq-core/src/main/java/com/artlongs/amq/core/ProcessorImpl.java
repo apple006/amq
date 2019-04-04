@@ -24,10 +24,9 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
+
+import static java.lang.Thread.currentThread;
 
 /**
  * Func : 消息处理中心
@@ -62,7 +61,7 @@ public enum ProcessorImpl implements Processor {
     private final int WORKER_BUFFER_SIZE = 1024 * 32;
 
     //创建消息多线程任务分发器 ringBuffer
-    private final RingBuffer<JobEvent> job_ringbuffer;
+    private final RingBuffer<JobEvent> job_worker;
 
     // 业务处理 worker
     private final RingBuffer<JobEvent> biz_worker;
@@ -73,6 +72,7 @@ public enum ProcessorImpl implements Processor {
     private RingBuffer<JobEvent> persistent_worker = null;
     // 消息持久化 worker pool
     private WorkerPool<JobEvent> persistent_worker_pool = null;
+    ExecutorService jobPool = null;
     ExecutorService bizPool = null;
     ExecutorService storePool = null;
     ISerializer serializer = ISerializer.Serializer.INST.of();
@@ -81,16 +81,16 @@ public enum ProcessorImpl implements Processor {
 
     private static boolean shutdowNow = false; // 关闭服务
 
-    public ProcessorImpl me() {
-        return this;
-    }
+    Semaphore track = new Semaphore(1, true);
 
     ProcessorImpl() {
         this.mqDisruptor = createDisrupter();
-        this.job_ringbuffer = mqDisruptor.start();
+        this.job_worker = mqDisruptor.start();
         //
+        jobPool = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
         bizPool = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
         storePool = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
+        //
         this.biz_worker_pool = createWorkerPool(new BizEventHandler());
         this.biz_worker = biz_worker_pool.start(bizPool);
         //
@@ -111,7 +111,7 @@ public enum ProcessorImpl implements Processor {
                         JobEvent.EVENT_FACTORY,
                         WORKER_BUFFER_SIZE,
                         DaemonThreadFactory.INSTANCE,
-                        ProducerType.SINGLE,
+                        ProducerType.MULTI,
                         new BlockingWaitStrategy());
         disruptor.handleEventsWith(jobEvnetHandler);
         return disruptor;
@@ -134,12 +134,25 @@ public enum ProcessorImpl implements Processor {
 
     public void onMessage(AioPipe pipe, ByteBuffer buffer) {
         if(!shutdowNow){
-            waitOnPublish();
-            if (MqConfig.inst.start_mq_publish_of_safe_queue) {
+//            waitOnPublish();
+/*            if (MqConfig.inst.start_mq_publish_of_safe_queue) {
                 publicJobByQuene(pipe, buffer);
             } else {
                 pulishJobEvent(pipe, buffer);
-            }
+            }*/
+            track.tryAcquire();
+            pulishJobEvent(pipe, buffer);
+            sleepOnPublish();
+            track.release();
+//            decodeAndDisruptor(pipe, buffer);
+        }
+    }
+
+    private void decodeAndDisruptor(AioPipe pipe, ByteBuffer buffer) {
+        Message message = serializer.getObj(buffer, Message.class);
+        if (null != message) {
+            logger.debug("[M] "+message);
+            ProcessorImpl.INST.onMessage(pipe, message);
         }
     }
 
@@ -148,7 +161,7 @@ public enum ProcessorImpl implements Processor {
         putToPublishQueue(pipe, buffer);
         QueueItem item = publishQueue.poll();
         pulishJobEvent(item.getPipe(), item.getBuffer());
-        buffer.clear();
+//        buffer.clear();
     }
 
     @Override
@@ -195,18 +208,23 @@ public enum ProcessorImpl implements Processor {
 
     }
 
+    /**
+     * 第一次收到 AIO 数据流时,执行分派
+     * @param pipe
+     * @param buffer
+     */
     public void pulishJobEvent(AioPipe pipe, ByteBuffer buffer) {
-        job_ringbuffer.tryPublishEvent(JobEvent::translate, pipe, buffer);
+        job_worker.publishEvent(JobEvent::translate, pipe, buffer);
     }
 
     /**
-     * 分派消息
+     * 分派消息(重发消息时用)
      *
      * @param message
      */
     public void pulishJobEvent(Message message) {
         message.getStat().setOn(Message.ON.QUENED);
-        job_ringbuffer.publishEvent(JobEvent::translate, message);
+        job_worker.publishEvent(JobEvent::translate, message);
     }
 
     /**
@@ -575,10 +593,15 @@ public enum ProcessorImpl implements Processor {
         return cache_subscribe;
     }
 
-    private void waitOnPublish() {
+    /**
+     * 增加一点点间隔,以免并发式的发布消息
+     */
+    private static void sleepOnPublish() {
         try {
             Thread.sleep(0, 100);
         } catch (InterruptedException e) {
+            // I said be quiet!
+            currentThread().interrupt();
             e.printStackTrace();
         }
     }

@@ -1,15 +1,6 @@
 package com.artlongs.mq;
 
 import act.Act;
-import act.app.ActionContext;
-import com.artlongs.amq.core.Message;
-import com.artlongs.amq.core.MqClientAction;
-import com.artlongs.amq.tester.TestUser;
-import org.osgl.mvc.annotation.GetAction;
-
-import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Func :

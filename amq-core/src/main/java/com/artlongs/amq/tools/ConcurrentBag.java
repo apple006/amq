@@ -117,7 +117,7 @@ public class ConcurrentBag<T extends ConcurrentBag.IConcurrentBagEntry> implemen
     * @return a borrowed instance from the bag or null if a timeout occurs
     * @throws InterruptedException if interrupted while waiting
     */
-   public T borrow(long timeout, final TimeUnit timeUnit) throws InterruptedException
+   public T borrow(long timeout, final TimeUnit timeUnit)
    {
       // Try the thread-local list first
       final List<Object> list = threadList.get();
@@ -148,7 +148,7 @@ public class ConcurrentBag<T extends ConcurrentBag.IConcurrentBagEntry> implemen
          timeout = timeUnit.toNanos(timeout);
          do {
             final long start = currentTime();
-            final T bagEntry = handoffQueue.poll(timeout, NANOSECONDS);
+            final T bagEntry = handoffQueue(timeout);
             if (bagEntry == null || bagEntry.compareAndSet(STATE_NOT_IN_USE, STATE_IN_USE)) {
                return bagEntry;
             }
@@ -161,6 +161,15 @@ public class ConcurrentBag<T extends ConcurrentBag.IConcurrentBagEntry> implemen
       finally {
          waiters.decrementAndGet();
       }
+   }
+
+   private T handoffQueue(long timeout){
+      try {
+        return handoffQueue.poll(timeout, NANOSECONDS);
+      } catch (InterruptedException e) {
+         e.printStackTrace();
+      }
+      return null;
    }
 
    /**
@@ -199,19 +208,20 @@ public class ConcurrentBag<T extends ConcurrentBag.IConcurrentBagEntry> implemen
     *
     * @param bagEntry an object to add to the bag
     */
-   public void add(final T bagEntry)
+   public boolean add(final T bagEntry)
    {
       if (closed) {
          LOGGER.info("ConcurrentBag has been closed, ignoring add()");
          throw new IllegalStateException("ConcurrentBag has been closed, ignoring add()");
       }
 
-      sharedList.add(bagEntry);
+     boolean added = sharedList.add(bagEntry);
 
       // spin until a thread takes it or none are waiting
       while (waiters.get() > 0 && bagEntry.getState() == STATE_NOT_IN_USE && !handoffQueue.offer(bagEntry)) {
          yield();
       }
+      return added;
    }
 
    /**
@@ -361,6 +371,13 @@ public class ConcurrentBag<T extends ConcurrentBag.IConcurrentBagEntry> implemen
    public int size()
    {
       return sharedList.size();
+   }
+
+   public boolean isEmpty(){
+      return size() == 0;
+   }
+   public boolean isNotEmpty(){
+      return !isEmpty();
    }
 
    public void dumpState()

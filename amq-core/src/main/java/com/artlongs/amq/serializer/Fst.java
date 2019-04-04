@@ -44,8 +44,7 @@ public enum Fst implements ISerializer {
 
     @Override
     public <T> T getObj(ByteBuffer byteBuffer, Class<T> clzz) {
-        byte[] bytes = Buffers.take(byteBuffer);
-        return getObj(bytes, clzz);
+        return getObj(byteBuffer);
     }
 
     public static void main(String[] args) {

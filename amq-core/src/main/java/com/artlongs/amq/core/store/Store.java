@@ -35,7 +35,7 @@ public enum Store implements IStore {
     private BTreeMap<String, byte[]> mq_subscribe = markMap(IStore.mq_subscribe, Serializer.BYTE_ARRAY);
     private BTreeMap<String, byte[]> mq_common_publish = markMap(IStore.mq_common_publish, Serializer.BYTE_ARRAY);
 
-    private final static String DEF_TREEMAP_NAME = "ampdata";
+    private final static String DEF_TREEMAP_NAME = "amqdata";
     private static Map<Integer, List> filterListCache = new ConcurrentHashMap<>();
 
     public DB markDb(String dbName) {

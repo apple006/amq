@@ -3,36 +3,24 @@ package com.artlongs.amq.core;
 import com.artlongs.amq.core.aio.AioBaseProcessor;
 import com.artlongs.amq.core.aio.AioPipe;
 import com.artlongs.amq.core.aio.State;
+import com.artlongs.amq.serializer.ISerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.CompletableFuture;
 
 /**
- * Func :
+ * Func : Mq 消息处理
  *
  * @author: leeton on 2019/2/25.
  */
 public class MqServerProcessor extends AioBaseProcessor<ByteBuffer> {
     private static Logger logger = LoggerFactory.getLogger(MqServerProcessor.class);
-
-/*    @Override
-    public void process0(AioPipe pipe, Message msg) {
-        logger.debug("[S]:"+msg);
-        ProcessorImpl.INST.onMessage(pipe, msg);
-    }*/
-
+    ISerializer serializer = ISerializer.Serializer.INST.of();
     @Override
     public void process0(AioPipe<ByteBuffer> pipe, ByteBuffer buffer) {
-        ByteBuffer tempBuffer = ByteBuffer.allocate(buffer.limit());
-        tempBuffer.put(buffer);
-//        buffer = null; // 这里把buffer清空,以让Aio读取准确的进行下一次读取.
-//        CompletableFuture.runAsync(() -> ProcessorImpl.INST.onMessage(pipe, tempBuffer));
-        ProcessorImpl.INST.onMessage(pipe, tempBuffer);
-//        ProcessorImpl.INST.onMessage(pipe, buffer);
-//        setBufferToReaded(buffer);
-        return;
+        ProcessorImpl.INST.onMessage(pipe, buffer);
+        setRead(buffer);
     }
 
     @Override
@@ -40,7 +28,16 @@ public class MqServerProcessor extends AioBaseProcessor<ByteBuffer> {
 
     }
 
-    private void setBufferToReaded(ByteBuffer buffer) {
+    private void setRead(ByteBuffer buffer) {
         buffer.position(buffer.limit());
+    }
+
+    private Message decode(ByteBuffer buffer) {
+        try {
+            return serializer.getObj(buffer,Message.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

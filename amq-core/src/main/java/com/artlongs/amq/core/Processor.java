@@ -13,6 +13,11 @@ import java.util.List;
  */
 public interface Processor {
 
+    /**
+     * 收到数据流时的逻辑处理
+     * @param pipe
+     * @param buffer
+     */
     public void onMessage(AioPipe pipe, ByteBuffer buffer);
     /**
      * 收到消息的逻辑处理

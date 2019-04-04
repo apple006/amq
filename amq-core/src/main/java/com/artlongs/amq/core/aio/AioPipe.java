@@ -36,8 +36,6 @@ public class AioPipe<T> implements Serializable {
      */
     protected static final byte CLOSING = -1;
 
-    private static final int MAX_WRITE_SIZE = 256 * 1024;
-
     /**
      * 底层通信channel对象
      */
