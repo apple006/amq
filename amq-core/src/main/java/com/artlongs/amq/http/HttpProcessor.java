@@ -1,6 +1,8 @@
 package com.artlongs.amq.http;
 
 import com.artlongs.amq.core.aio.*;
+import com.artlongs.amq.core.aio.plugin.Monitor;
+import com.artlongs.amq.core.aio.plugin.Plugin;
 import com.artlongs.amq.http.routes.Controller;
 import com.artlongs.amq.http.routes.Router;
 

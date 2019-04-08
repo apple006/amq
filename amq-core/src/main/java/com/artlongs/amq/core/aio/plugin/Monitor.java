@@ -1,4 +1,6 @@
-package com.artlongs.amq.core.aio;
+package com.artlongs.amq.core.aio.plugin;
+
+import com.artlongs.amq.core.aio.AioPipe;
 
 /**
  * Func :

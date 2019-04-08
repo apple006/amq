@@ -1,6 +1,8 @@
 package com.artlongs.amq.core.aio;
 
+import com.artlongs.amq.core.aio.plugin.Monitor;
 import com.artlongs.amq.core.aio.plugin.MonitorPlugin;
+import com.artlongs.amq.core.aio.plugin.Plugin;
 
 import java.util.HashSet;
 import java.util.Set;

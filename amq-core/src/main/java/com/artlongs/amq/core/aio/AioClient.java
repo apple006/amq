@@ -1,5 +1,7 @@
 package com.artlongs.amq.core.aio;
 
+import com.artlongs.amq.core.aio.plugin.Plugin;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
