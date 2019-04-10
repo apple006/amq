@@ -10,31 +10,39 @@ import java.util.Map;
 import java.util.Properties;
 
 /**
- *
+ * MQ及 IO 配置项
+ * 在 amq.properties 里设置下面的条目都会起作用,并且优先.
  */
 public enum MqConfig {
     inst;
 
-    //========================== IO ITME =====================================
     public Charset utf_8 = StandardCharsets.UTF_8;
     public String prop_file_and_path = "amq.properties";
     public String profile = "";
 
+    //========================== IO ITME =====================================
     public String host = "127.0.0.1";
     public int port = 8888;
     public int admin_http_port=8889;
-    //========================== MQ ITME =====================================
-    //读取数据的行等侍时长(秒)
-    public int read_wait_timeout = 3;
-    // 客户端的连接线程池大小(2的倍数)
-    public int client_connect_thread_pool_size = 128;
-    // 服务端的连接线程池大小(2的倍数)
-    public int server_connect_thread_pool_size = 2048;
-    // 工作线程池大小(2的倍数)
+
+    // 客户端的连接线程池大小(2的倍数,等同于开了多少个客户端)
+    public int client_connect_thread_pool_size = 16;
+
+    // 服务端的连接线程池大小(2的倍数,等同于开了多少个服务端)
+    public int server_connect_thread_pool_size = 64;
+
+    // 服务端的每一个channel 处理事件的线程数大小,实际上是(AsynchronousChannelGroup)的大小
+    public int server_channel_event_thread_size = 8;
+
+    // 客户端的的每一个channel 处理事件的线程数大小,实际上是(AsynchronousChannelGroup)的大小
+    public int client_channel_event_thread_size = 2;
+
+    // Ringbuff 工作线程池大小(2的倍数)
     public int worker_thread_pool_size = 128;
-    // 工作线程最大时长(秒)
+    // Ringbuff 工作线程最大时长(秒)
     public long worker_keepalive_second = 30 * 60;
 
+    //========================== MQ ITME =====================================
     // 自动确认收到消息
     public boolean mq_auto_acked = true;
 

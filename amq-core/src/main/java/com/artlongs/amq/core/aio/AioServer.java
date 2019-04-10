@@ -45,7 +45,7 @@ public class AioServer<T> implements Runnable {
     /**
      * 客户端存活列表,ConcurrentHashMap[PipeID,AioPipe]
      */
-    private static ConcurrentHashMap<Integer, AioPipe> channelAliveMap = new ConcurrentHashMap<>(MqConfig.inst.client_connect_thread_pool_size);
+    private static ConcurrentHashMap<Integer, AioPipe> channelAliveMap = new ConcurrentHashMap<>(MqConfig.inst.client_connect_thread_pool_size * 10);
 
     private boolean checkAlive = false;
 
@@ -90,7 +90,7 @@ public class AioServer<T> implements Runnable {
     protected final void start0(Function<AsynchronousSocketChannel, AioPipe<T>> aioPipeFunction) throws IOException {
         try {
             this.aioPipeFunction = aioPipeFunction;
-            asynchronousChannelThreadPool = AsynchronousChannelGroup.withFixedThreadPool(config.getThreadNum(), new ThreadFactory() {
+            asynchronousChannelThreadPool = AsynchronousChannelGroup.withFixedThreadPool(config.getServerThreadNum(), new ThreadFactory() {
                 byte index = 0;
 
                 @Override
@@ -223,7 +223,7 @@ public class AioServer<T> implements Runnable {
      * @param num 线程数
      */
     public final AioServer<T> setThreadNum(int num) {
-        this.config.setThreadNum(num);
+        this.config.setServerThreadNum(num);
         return this;
     }
 

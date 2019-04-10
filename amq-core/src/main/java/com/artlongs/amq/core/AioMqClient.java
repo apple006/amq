@@ -31,10 +31,4 @@ public class AioMqClient<T> extends AioClient<T> {
         return aioPipe;
     }
 
-    @Override
-    public void run() {
-        super.run();
-    }
-
-
 }

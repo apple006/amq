@@ -17,20 +17,15 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
     @Override
     public void completed(final Integer size, final AioPipe<T> aioPipe) {
         try {
-            if (size > 0) {// 有读取到数据,才进行数据处理
-                //            System.err.println("read is completed" );
-                // 记录流量
-                Monitor<T> monitor = aioPipe.getServerConfig().getProcessor().getMonitor();
-                if (monitor != null) {
-                    monitor.read(aioPipe, size);
-                }
-                aioPipe.readSemaphore.release();
-                aioPipe.readCacheQueue.put(aioPipe.readBuffer);
-                aioPipe.readFromChannel(size == -1);
-            }else {
-                logger.error("Read size is zero! meybe send data is too fast !");
+            // System.err.println("read is completed" );
+            // 记录流量
+            Monitor<T> monitor = aioPipe.getServerConfig().getProcessor().getMonitor();
+            if (monitor != null) {
+                monitor.read(aioPipe, size);
             }
-
+            aioPipe.readSemaphore.release();
+            aioPipe.readCacheQueue.put(aioPipe.readBuffer);
+            aioPipe.readFromChannel(size == -1);
         } catch (Exception e) {
             failed(e, aioPipe);
         } finally {
@@ -40,7 +35,6 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
 
     @Override
     public void failed(Throwable exc, AioPipe<T> aioPipe) {
-        whenErrDoWaiting();
         try {
             aioPipe.getServerConfig().getProcessor().stateEvent(aioPipe, State.INPUT_EXCEPTION, exc);
         } catch (Exception e) {

@@ -37,9 +37,7 @@ public class AioMqServer {
             aioServer.startCheckAlive(MqConfig.inst.start_check_client_alive);
             aioServer.startMonitorPlugin(MqConfig.inst.start_flow_monitor);
             //
-            Thread t = new Thread(aioServer);
-            t.setDaemon(true);
-            pool.submit(t);
+            pool.submit(aioServer);
             aioServer.start();
             this.aioServer = aioServer;
             //

@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -18,12 +20,16 @@ public class TestRecv1 {
     private static Logger logger = LoggerFactory.getLogger(TestRecv1.class);
 
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
-        final int threadSize = MqConfig.inst.client_connect_thread_pool_size;
-        AsynchronousChannelGroup channelGroup = AsynchronousChannelGroup.withFixedThreadPool(threadSize, (r)->new Thread(r));
+
+        ExecutorService pool = Executors.newFixedThreadPool(MqConfig.inst.client_connect_thread_pool_size);
+
+        final int groupSize = MqConfig.inst.client_channel_event_thread_size;
+        AsynchronousChannelGroup channelGroup = AsynchronousChannelGroup.withFixedThreadPool(groupSize, (r)->new Thread(r));
         MqClientProcessor processor = new MqClientProcessor();
         AioMqClient<Message> client = new AioMqClient(new MqProtocol(), processor);
-        Thread t = new Thread(client);
-        t.setDaemon(true);
+//        Thread t = new Thread(client);
+//        t.setDaemon(true);
+        pool.submit(client);
         client.start(channelGroup);
 
         //

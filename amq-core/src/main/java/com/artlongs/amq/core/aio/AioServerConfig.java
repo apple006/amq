@@ -1,5 +1,7 @@
 package com.artlongs.amq.core.aio;
 
+import com.artlongs.amq.core.MqConfig;
+
 import java.net.SocketOption;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,19 +32,20 @@ public class AioServerConfig<T> {
     private Protocol<T> protocol;
 
     /**
-     * buffer队列缓存大小
+     * buffer队列初始容量大小,最好根据IO请求的并发量来设置(2的倍数)
      */
-    private int queueSize = 512;
+    private int queueSize = 10000;
 
     /**
-     * 消息体缓存大小,字节
+     * 消息体缓存大小,字节(这个实际上是一条消息的最大容量)
      */
     private int dirctBufferSize = 2048;
 
     /**
      * 服务器处理线程数
      */
-    private int threadNum = Runtime.getRuntime().availableProcessors() + 1;
+    private int serverThreadNum = MqConfig.inst.server_channel_event_thread_size;
+//    private int serverThreadNum = Runtime.getRuntime().availableProcessors() + 1;
     private float limitRate = 0.9f;
     private float releaseRate = 0.6f;
     /**
@@ -127,16 +130,16 @@ public class AioServerConfig<T> {
         return bannerEnabled;
     }
 
-    public int getThreadNum() {
-        return threadNum;
+    public int getServerThreadNum() {
+        return serverThreadNum;
     }
 
     public List<SocketOption> getSocketOptions() {
         return socketOptions;
     }
 
-    public AioServerConfig<T> setThreadNum(int threadNum) {
-        this.threadNum = threadNum;
+    public AioServerConfig<T> setServerThreadNum(int serverThreadNum) {
+        this.serverThreadNum = serverThreadNum;
         return this;
     }
 
@@ -163,7 +166,7 @@ public class AioServerConfig<T> {
         sb.append(", port=").append(port);
         sb.append(", queueSize=").append(queueSize);
         sb.append(", dirctBufferSize=").append(dirctBufferSize);
-        sb.append(", threadNum=").append(threadNum);
+        sb.append(", serverThreadNum=").append(serverThreadNum);
         sb.append(", limitRate=").append(limitRate);
         sb.append(", releaseRate=").append(releaseRate);
         sb.append(", flowLimitLine=").append(flowLimitLine);

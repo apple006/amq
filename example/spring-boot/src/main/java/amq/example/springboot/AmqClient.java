@@ -20,8 +20,6 @@ public class AmqClient extends MqClientProcessor {
             final int threadSize = MqConfig.inst.client_connect_thread_pool_size;
             AsynchronousChannelGroup channelGroup = AsynchronousChannelGroup.withFixedThreadPool(threadSize, (r)->new Thread(r));
             AioMqClient<Message> client = new AioMqClient(new MqProtocol(), this);
-            Thread t = new Thread(client);
-            t.setDaemon(true);
             client.start(channelGroup);
 
         } catch (IOException e) {

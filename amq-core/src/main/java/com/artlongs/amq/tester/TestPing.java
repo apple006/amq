@@ -15,12 +15,10 @@ public class TestPing {
 
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
 
-        final int threadSize = MqConfig.inst.client_connect_thread_pool_size;
+        final int threadSize = MqConfig.inst.client_channel_event_thread_size;
         AsynchronousChannelGroup channelGroup = AsynchronousChannelGroup.withFixedThreadPool(threadSize, (r)->new Thread(r));
         MqClientProcessor processor = new MqClientProcessor();
         AioMqClient<Message> client = new AioMqClient(new MqProtocol(), processor);
-        Thread t = new Thread(client);
-        t.setDaemon(true);
         client.start(channelGroup);
         //
         Message message = processor.publishJob("topic_get_userById",2);
