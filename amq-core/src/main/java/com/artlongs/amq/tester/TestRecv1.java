@@ -9,7 +9,6 @@ import java.nio.channels.AsynchronousChannelGroup;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Func :
@@ -27,15 +26,10 @@ public class TestRecv1 {
         AsynchronousChannelGroup channelGroup = AsynchronousChannelGroup.withFixedThreadPool(groupSize, (r)->new Thread(r));
         MqClientProcessor processor = new MqClientProcessor();
         AioMqClient<Message> client = new AioMqClient(new MqProtocol(), processor);
-//        Thread t = new Thread(client);
-//        t.setDaemon(true);
         pool.submit(client);
         client.start(channelGroup);
 
-        //
-        AtomicInteger count = new AtomicInteger(0);
         Call<Message> callback = (msg)->{
-            logger.debug("nums :"+ count.incrementAndGet());
             execBack(msg);
         };
         processor.subscribe("topic_hello",callback);
@@ -44,7 +38,7 @@ public class TestRecv1 {
 
     private static void execBack(Message message) {
         long s = System.currentTimeMillis();
-        logger.debug(message.toString());
+        logger.debug(message.getV().toString());
         logger.debug("Useed Time(ms):"+(s-message.getStat().getCtime()));
 
     }

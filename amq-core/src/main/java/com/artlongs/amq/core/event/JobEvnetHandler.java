@@ -22,8 +22,9 @@ public class JobEvnetHandler implements EventHandler<JobEvent> {
     public void onEvent(JobEvent event, long sequence, boolean endOfBatch) throws Exception {
         logger.debug("[S]执行消息任务的分派 ......");
         Message message = decode(event.getByteBuffer());
+        event.getByteBuffer().clear();
         if (null != message) {
-            logger.debug("[M] "+message);
+            logger.debug("[S]"+message);
             ProcessorImpl.INST.onMessage(event.getPipe(), message);
         }
     }

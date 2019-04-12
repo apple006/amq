@@ -17,13 +17,14 @@ public class Writer<T> implements CompletionHandler<Integer, AioPipe<T>> {
     @Override
     public void completed(Integer size, AioPipe<T> pipe) {
         try {
+            System.err.println("write completed .");
             // 接收到的消息进行预处理
             Monitor monitor = pipe.getServerConfig().getProcessor().getMonitor();
             if (monitor != null) {
                 monitor.write(pipe, size);
             }
             // 清理
-            pipe.clearWriteBufferAndUnLock();
+//            pipe.clearWriteBufferAndUnLock();
             // 继续写操作
             pipe.writeToChannel();
         } catch (Exception e) {

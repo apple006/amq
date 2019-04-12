@@ -20,7 +20,7 @@ public class RingBufferQueue<T> implements Iterable {
     private int tail = 0;
     private int capacity = DEFAULT_SIZE;
     private int realSize = 0; //实际的 item 个数
-    private final Semaphore track = new Semaphore(1);
+    private final Semaphore track = new Semaphore(1,true);
 
     public RingBufferQueue() {
         this.capacity = DEFAULT_SIZE;
@@ -72,6 +72,7 @@ public class RingBufferQueue<T> implements Iterable {
         }
         final int current = tail;
         items[current] = v;
+        System.err.println("putindex=" + current);
         tail = (tail + 1) % capacity;
         size();
         return current;

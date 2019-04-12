@@ -140,10 +140,8 @@ public enum ProcessorImpl implements Processor {
             } else {
                 pulishJobEvent(pipe, buffer);
             }*/
-            track.tryAcquire();
+            logger.error(" rece msg form aio ...");
             pulishJobEvent(pipe, buffer);
-            sleepOnPublish();
-            track.release();
 //            decodeAndDisruptor(pipe, buffer);
         }
     }
@@ -236,7 +234,7 @@ public enum ProcessorImpl implements Processor {
     public void publishJobToWorker(Message message) {
         message.getStat().setOn(Message.ON.SENDING);
         publishBizToWorkerPool(biz_worker, message);
-        tiggerStoreComonMessageToDb(persistent_worker, message);
+//        tiggerStoreComonMessageToDb(persistent_worker, message);
     }
 
     private void publishBizToWorkerPool(RingBuffer<JobEvent> ringBuffer, Message message) {
@@ -357,6 +355,7 @@ public enum ProcessorImpl implements Processor {
         //追加订阅者的消息ID及状态
         changeMessageOnReply(subscribe, message);
         // 发送消息给订阅方
+        System.err.println("send mq to pipid = "+ subscribe.getPipeId());
         boolean writed = getPipeBy(subscribe.getPipeId()).write(IOUtils.wrap(serializer.toByte(message)));
         if (writed) {
             onSendSuccToPrcess(subscribe, message);

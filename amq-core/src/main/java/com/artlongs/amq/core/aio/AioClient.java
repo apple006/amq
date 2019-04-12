@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketOption;
+import java.net.StandardSocketOptions;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.util.concurrent.ExecutionException;
@@ -71,6 +72,8 @@ public class AioClient<T> implements Runnable {
             for (SocketOption option :config.getSocketOptions()) {
                 socketChannel.setOption(option,option.type());
             }
+        }else {
+            setDefSocketOptions(socketChannel);
         }
         //bind host
         socketChannel.connect(new InetSocketAddress(config.getHost(), config.getPort())).get();
@@ -167,6 +170,17 @@ public class AioClient<T> implements Runnable {
 
     public AioPipe<T> getPipe() {
         return pipe;
+    }
+
+    private void setDefSocketOptions(AsynchronousSocketChannel socketChannel){
+        try {
+            socketChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+            socketChannel.setOption(StandardSocketOptions.SO_RCVBUF, 32 * 1024);
+            socketChannel.setOption(StandardSocketOptions.SO_SNDBUF, 32 * 1024);
+            socketChannel.setOption(StandardSocketOptions.SO_KEEPALIVE, true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

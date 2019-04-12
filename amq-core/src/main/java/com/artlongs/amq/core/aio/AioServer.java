@@ -1,6 +1,5 @@
 package com.artlongs.amq.core.aio;
 
-import com.artlongs.amq.core.MqConfig;
 import com.artlongs.amq.core.aio.plugin.*;
 import com.artlongs.amq.tools.IOUtils;
 import org.slf4j.Logger;
@@ -9,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketOption;
+import java.net.StandardSocketOptions;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
@@ -45,7 +45,7 @@ public class AioServer<T> implements Runnable {
     /**
      * 客户端存活列表,ConcurrentHashMap[PipeID,AioPipe]
      */
-    private static ConcurrentHashMap<Integer, AioPipe> channelAliveMap = new ConcurrentHashMap<>(MqConfig.inst.client_connect_thread_pool_size * 10);
+    private static ConcurrentHashMap<Integer, AioPipe> channelAliveMap = new ConcurrentHashMap<>(2000);
 
     private boolean checkAlive = false;
 
@@ -104,18 +104,19 @@ public class AioServer<T> implements Runnable {
                 for (SocketOption option : config.getSocketOptions()) {
                     this.serverSocketChannel.setOption(option, option.type());
                 }
+            }else {
+                setDefSocketOptions();
             }
+
             //bind host
             if (config.getHost() != null) {
                 serverSocketChannel.bind(new InetSocketAddress(config.getHost(), config.getPort()), 1000);
             } else {
                 serverSocketChannel.bind(new InetSocketAddress(config.getPort()), 1000);
             }
-
             serverSocketChannel.accept(serverSocketChannel, new CompletionHandler<AsynchronousSocketChannel, AsynchronousServerSocketChannel>() {
                 @Override
                 public void completed(final AsynchronousSocketChannel channel, AsynchronousServerSocketChannel serverSocketChannel) {
-                    serverSocketChannel.accept(serverSocketChannel, this);
                     String remoteAddressStr = IOUtils.getRemoteAddressStr(channel);
                     if (IpPlugin.findInBlackList(remoteAddressStr)) {
                         IOUtils.closeChannel(channel);
@@ -123,6 +124,7 @@ public class AioServer<T> implements Runnable {
                     } else {
                         createPipe(channel);
                     }
+                    serverSocketChannel.accept(serverSocketChannel, this);
                 }
 
                 @Override
@@ -149,6 +151,7 @@ public class AioServer<T> implements Runnable {
         try {
             pipe = aioPipeFunction.apply(channel);
             pipe.initSession();
+            System.err.println("create pipid = "+ pipe.getId());
             if (null != pipe) {
                 channelAliveMap.putIfAbsent(pipe.getId(), pipe);
             }
@@ -286,6 +289,15 @@ public class AioServer<T> implements Runnable {
     public AioServer<T> startMonitorPlugin(boolean tf) {
         if (tf) addPlugin(new MonitorPlugin());
         return this;
+    }
+
+    private void setDefSocketOptions(){
+        try {
+            serverSocketChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+            serverSocketChannel.setOption(StandardSocketOptions.SO_RCVBUF, 64 * 1024);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static ConcurrentHashMap<Integer, AioPipe> getChannelAliveMap() {

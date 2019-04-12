@@ -19,6 +19,9 @@ public class MqServerProcessor extends AioBaseProcessor<ByteBuffer> {
     ISerializer serializer = ISerializer.Serializer.INST.of();
     @Override
     public void process0(AioPipe<ByteBuffer> pipe, ByteBuffer buffer) {
+        logger.warn("do send msg to mq process center.");
+/*        Message message = decode(buffer);
+        ProcessorImpl.INST.onMessage(pipe, message);*/
         ProcessorImpl.INST.onMessage(pipe, buffer);
         setRead(buffer);
     }

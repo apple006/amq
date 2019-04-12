@@ -17,19 +17,20 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
     @Override
     public void completed(final Integer size, final AioPipe<T> aioPipe) {
         try {
-            // System.err.println("read is completed" );
-            // 记录流量
-            Monitor<T> monitor = aioPipe.getServerConfig().getProcessor().getMonitor();
-            if (monitor != null) {
-                monitor.read(aioPipe, size);
+             System.err.println("read is completed" );
+            if(size>0){
+                // 记录流量
+                Monitor<T> monitor = aioPipe.getServerConfig().getProcessor().getMonitor();
+                if (monitor != null) {
+                    monitor.read(aioPipe, size);
+                }
             }
-            aioPipe.readSemaphore.release();
-            aioPipe.readCacheQueue.put(aioPipe.readBuffer);
+//            aioPipe.readCacheQueue.put(aioPipe.readBuffer);
             aioPipe.readFromChannel(size == -1);
         } catch (Exception e) {
             failed(e, aioPipe);
         } finally {
-            aioPipe.readSemaphore.release();
+//            aioPipe.readSemaphore.release();
         }
     }
 

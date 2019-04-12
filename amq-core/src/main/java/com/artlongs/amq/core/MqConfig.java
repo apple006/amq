@@ -25,17 +25,15 @@ public enum MqConfig {
     public int port = 8888;
     public int admin_http_port=8889;
 
-    // 客户端的连接线程池大小(2的倍数,等同于开了多少个客户端)
-    public int client_connect_thread_pool_size = 16;
-
     // 服务端的连接线程池大小(2的倍数,等同于开了多少个服务端)
-    public int server_connect_thread_pool_size = 64;
-
+    public int server_connect_thread_pool_size = 1;
     // 服务端的每一个channel 处理事件的线程数大小,实际上是(AsynchronousChannelGroup)的大小
-    public int server_channel_event_thread_size = 8;
+    public int server_channel_event_thread_size = 16;
 
+    // 客户端的连接线程池大小(2的倍数,等同于开了多少个客户端)
+    public int client_connect_thread_pool_size = 1;
     // 客户端的的每一个channel 处理事件的线程数大小,实际上是(AsynchronousChannelGroup)的大小
-    public int client_channel_event_thread_size = 2;
+    public int client_channel_event_thread_size = 8;
 
     // Ringbuff 工作线程池大小(2的倍数)
     public int worker_thread_pool_size = 128;
