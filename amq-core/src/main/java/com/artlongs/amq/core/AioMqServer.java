@@ -41,6 +41,8 @@ public class AioMqServer {
             aioServer.start();
             this.aioServer = aioServer;
             //
+            ProcessorImpl.INST.init();
+            //
             scheduler();
             //
             startAdmin();

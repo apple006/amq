@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.channels.CompletionHandler;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Func :
@@ -14,8 +15,32 @@ import java.nio.channels.CompletionHandler;
 public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
     private static final Logger logger = LoggerFactory.getLogger(Reader.class);
 
+    private ExecutorService executorService;
+    private ThreadLocal<Object> threadLocal = new ThreadLocal<>();
+
+    public Reader() {
+    }
+
+    public Reader(ExecutorService executorService) {
+        this.executorService = executorService;
+    }
+
     @Override
-    public void completed(final Integer size, final AioPipe<T> aioPipe) {
+    public void completed(final Integer result, final AioPipe<T> aioSession) {
+        if (executorService != null && threadLocal.get() == null) {
+            executorService.execute(new Runnable() {
+                @Override
+                public void run() {
+                    threadLocal.set(this);
+                    completed0(result, aioSession);
+                    threadLocal.remove();
+                }
+            });
+        } else {
+            completed0(result, aioSession);
+        }
+    }
+    private void completed0(final Integer size, final AioPipe<T> aioPipe) {
         try {
              System.err.println("read is completed" );
             if(size>0){
@@ -25,12 +50,9 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
                     monitor.read(aioPipe, size);
                 }
             }
-//            aioPipe.readCacheQueue.put(aioPipe.readBuffer);
             aioPipe.readFromChannel(size == -1);
         } catch (Exception e) {
             failed(e, aioPipe);
-        } finally {
-//            aioPipe.readSemaphore.release();
         }
     }
 
@@ -48,11 +70,4 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
         }
     }
 
-    private void whenErrDoWaiting() {
-        try {
-            Thread.sleep(50);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
 }

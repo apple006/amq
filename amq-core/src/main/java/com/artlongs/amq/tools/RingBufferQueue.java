@@ -37,6 +37,13 @@ public class RingBufferQueue<T> implements Iterable {
         if (capacity % 2 != 0) throw new UnsupportedOperationException("RBQ(capacity),容量一定要设定为2的倍数.");
         this.capacity = capacity;
         this.items = (T[]) Array.newInstance(Object.class, capacity);
+        init();
+    }
+
+    private void init(){
+        for (T item : items) {
+            item = null;
+        }
     }
 
     public Boolean isEmpty() {

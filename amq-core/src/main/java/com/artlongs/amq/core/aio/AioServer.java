@@ -14,6 +14,8 @@ import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.Function;
 
@@ -32,7 +34,7 @@ public class AioServer<T> implements Runnable {
     /**
      * 读回调事件处理
      */
-    protected Reader<T> reader = new Reader<>();
+    protected Reader<T> reader;
     /**
      * 写回调事件处理
      */
@@ -48,6 +50,8 @@ public class AioServer<T> implements Runnable {
     private static ConcurrentHashMap<Integer, AioPipe> channelAliveMap = new ConcurrentHashMap<>(2000);
 
     private boolean checkAlive = false;
+
+    private ExecutorService readExecutorService;
 
     /**
      * 设置服务端启动必要参数配置
@@ -89,13 +93,23 @@ public class AioServer<T> implements Runnable {
      */
     protected final void start0(Function<AsynchronousSocketChannel, AioPipe<T>> aioPipeFunction) throws IOException {
         try {
+            readExecutorService = Executors.newFixedThreadPool(config.getServerThreadNum(), new ThreadFactory() {
+                byte index = 0;
+
+                @Override
+                public Thread newThread(Runnable r) {
+                    return new Thread(r, "Aio:WorkerThread-" + (++index));
+                }
+            });
+
+            reader = new Reader<>(readExecutorService);
             this.aioPipeFunction = aioPipeFunction;
             asynchronousChannelThreadPool = AsynchronousChannelGroup.withFixedThreadPool(config.getServerThreadNum(), new ThreadFactory() {
                 byte index = 0;
 
                 @Override
                 public Thread newThread(Runnable r) {
-                    return new Thread(r, "amq-socket:AIO-" + (++index));
+                    return new Thread(r, "Aio:accept-" + (++index));
                 }
             });
             this.serverSocketChannel = AsynchronousServerSocketChannel.open(asynchronousChannelThreadPool);
@@ -122,7 +136,13 @@ public class AioServer<T> implements Runnable {
                         IOUtils.closeChannel(channel);
                         LOGGER.warn("[X]Find black IP ({}),so close connetion.", remoteAddressStr);
                     } else {
-                        createPipe(channel);
+                        readExecutorService.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                createPipe(channel);
+                            }
+                        });
+
                     }
                     serverSocketChannel.accept(serverSocketChannel, this);
                 }

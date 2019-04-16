@@ -99,6 +99,10 @@ public enum ProcessorImpl implements Processor {
 
     }
 
+    public ProcessorImpl init(){
+        return this;
+    }
+
     /**
      * 创建消息 disruptor
      *
