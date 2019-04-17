@@ -1,5 +1,8 @@
 package com.artlongs.amq.tools;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -7,6 +10,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Func : RingBuffer Queue, 自动扩容
@@ -14,17 +18,20 @@ import java.util.concurrent.Semaphore;
  * @author: leeton on 2019/2/26.
  */
 public class RingBufferQueue<T> implements Iterable {
-    private final static int DEFAULT_SIZE = 256;
+    private static Logger logger = LoggerFactory.getLogger(RingBufferQueue.class);
+    private static int DEFAULT_SIZE = 256;
     private T[] items;
-    private int head = 0;
-    private int tail = 0;
+    private AtomicInteger head = new AtomicInteger(0);
+    private AtomicInteger tail = new AtomicInteger(0);
     private int capacity = DEFAULT_SIZE;
     private int realSize = 0; //实际的 item 个数
     private final Semaphore track = new Semaphore(1,true);
+    private int id;
 
     public RingBufferQueue() {
         this.capacity = DEFAULT_SIZE;
         this.items = (T[]) Array.newInstance(Object.class, DEFAULT_SIZE);
+        this.id = hashCode();
     }
 
     /**
@@ -36,6 +43,7 @@ public class RingBufferQueue<T> implements Iterable {
         if (capacity <= 0) capacity = DEFAULT_SIZE;
         if (capacity % 2 != 0) throw new UnsupportedOperationException("RBQ(capacity),容量一定要设定为2的倍数.");
         this.capacity = capacity;
+        DEFAULT_SIZE = capacity;
         this.items = (T[]) Array.newInstance(Object.class, capacity);
         init();
     }
@@ -47,26 +55,26 @@ public class RingBufferQueue<T> implements Iterable {
     }
 
     public Boolean isEmpty() {
-        return head == tail;
+        return (tail.intValue()==head.intValue()) && (tail.intValue()==0);
     }
     public Boolean isNotEmpty() {
         return !isEmpty();
     }
 
     public Boolean full() {
-        return (tail + 1) % capacity == head;
+        return tail.intValue()==capacity;
     }
 
     public void clear() {
         track.tryAcquire();
         Arrays.fill(items, null);
-        this.head = 0;
-        this.tail = 0;
+        this.head = new AtomicInteger(0);
+        this.tail = new AtomicInteger(0);;
         track.release();
     }
 
     public int size() {
-        return (realSize = tail - head);
+        return (realSize = tail.intValue()-head.intValue());
     }
 
     public int capacity() {
@@ -75,18 +83,19 @@ public class RingBufferQueue<T> implements Iterable {
 
     public int put(T v) {
         if (full()) {
-            extendCapacity();
+            grow();
         }
-        final int current = tail;
+        final int current = tail.get();
         items[current] = v;
-        System.err.println("putindex=" + current);
-        tail = (tail + 1) % capacity;
+//        System.err.println("putindex=" + current);
+//        System.err.println("queue id =" +this.id);
+        tail.incrementAndGet();
         size();
         return current;
     }
 
     /**
-     * Get and remove element from head
+     * FIFO 并把取出的位置设为 NULL
      *
      * @return
      */
@@ -94,9 +103,10 @@ public class RingBufferQueue<T> implements Iterable {
         if (isEmpty()) {
             return null;
         }
-        T item = items[head];
-        remove(head);
-        head = (head + 1) % capacity;
+        T item = items[head.get()];
+        remove(head.get());
+        head.incrementAndGet();
+//        System.err.println("head:" + head);
         size();
         return item;
     }
@@ -140,15 +150,40 @@ public class RingBufferQueue<T> implements Iterable {
     /**
      * 扩容
      */
-    private void extendCapacity() {
+    private void grow() {
         track.tryAcquire();
         final int oldCapacity = items.length;
         final int newCapacity = capacity << 1; //扩容一倍
-        final T[] newElementData = (T[]) Array.newInstance(Object.class, newCapacity);
-        System.arraycopy(items, 0, newElementData, 0, oldCapacity);
+        if (newCapacity >= Integer.MAX_VALUE) {
+            downCap();
+            return;
+        }
+        try {
+            final T[] newElementData = (T[])Array.newInstance(Object.class, newCapacity);
+            System.arraycopy(items, 0, newElementData, 0, oldCapacity);
+            this.items = newElementData;
+            this.capacity = newCapacity;
+        } catch (NegativeArraySizeException e) {
+            logger.error("oldCapacity:({}),newCapacity:({})",oldCapacity,newCapacity);
+            e.printStackTrace();
+        }
+        track.release();
+    }
+
+    /**
+     * 超过 Integer.MAX_VALUE ,执行缩小容量
+     */
+    private void downCap(){
+        final int oldCapacity = items.length;
+        final int newCapacity = DEFAULT_SIZE<<1;
+        final T[] newElementData = (T[])Array.newInstance(Object.class, newCapacity);
+        System.arraycopy(items, oldCapacity-DEFAULT_SIZE, newElementData, 0, DEFAULT_SIZE);
         this.items = newElementData;
         this.capacity = newCapacity;
-        track.release();
+        this.head = new AtomicInteger(0);
+        this.tail = new AtomicInteger(DEFAULT_SIZE);
+        size();
+
     }
 
     public T[] asArray(Class<?> clazz) {
@@ -210,10 +245,10 @@ public class RingBufferQueue<T> implements Iterable {
 
     public static void main(String[] args) {
         RingBufferQueue<ByteBuffer> rbq = new RingBufferQueue<>(2);
-        rbq.put(ByteBuffer.wrap("hello".getBytes()));
-        rbq.put(ByteBuffer.wrap("world".getBytes()));
-        rbq.put(ByteBuffer.wrap("moon!".getBytes()));
-        rbq.putIfAbsent(ByteBuffer.wrap("moon!".getBytes()));
+        for (int i = 0; i < 10; i++) {
+            rbq.put(ByteBuffer.wrap(String.valueOf(i).getBytes()));
+        }
+
         System.err.println(rbq.size());
 //        rbq.pop();
 
@@ -222,9 +257,9 @@ public class RingBufferQueue<T> implements Iterable {
             System.err.println(new String(iter.next().array()));
         }
 
-        for (ByteBuffer o : rbq.asArray(ByteBuffer.class)) {
+/*        for (ByteBuffer o : rbq.asArray(ByteBuffer.class)) {
             System.err.println(new String(o.array()));
-        }
+        }*/
 
     }
 

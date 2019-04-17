@@ -1,6 +1,13 @@
 package com.artlongs.amq.core.aio;
 
 import com.artlongs.amq.core.aio.plugin.*;
+import com.artlongs.amq.core.event.AioReadEvent;
+import com.artlongs.amq.core.event.AioReadEventHandler;
+import com.artlongs.amq.disruptor.BlockingWaitStrategy;
+import com.artlongs.amq.disruptor.RingBuffer;
+import com.artlongs.amq.disruptor.dsl.Disruptor;
+import com.artlongs.amq.disruptor.dsl.ProducerType;
+import com.artlongs.amq.disruptor.util.DaemonThreadFactory;
 import com.artlongs.amq.tools.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +22,6 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.Function;
 
@@ -52,6 +58,7 @@ public class AioServer<T> implements Runnable {
     private boolean checkAlive = false;
 
     private ExecutorService readExecutorService;
+    public static RingBuffer<AioReadEvent> readRingBuffer = createDisrupter().start();
 
     /**
      * 设置服务端启动必要参数配置
@@ -83,7 +90,7 @@ public class AioServer<T> implements Runnable {
         if (config.isBannerEnabled()) {
             LOGGER.info(config.BANNER + "\r\n :: amq-socket ::\t(" + config.VERSION + ")");
         }
-        start0((AsynchronousSocketChannel channel)->new AioPipe<T>(channel, config, reader, writer));
+        start0((AsynchronousSocketChannel channel)->new AioPipe<T>(channel, config, new Reader<>(), new Writer<>()));
     }
 
     /**
@@ -93,16 +100,6 @@ public class AioServer<T> implements Runnable {
      */
     protected final void start0(Function<AsynchronousSocketChannel, AioPipe<T>> aioPipeFunction) throws IOException {
         try {
-            readExecutorService = Executors.newFixedThreadPool(config.getServerThreadNum(), new ThreadFactory() {
-                byte index = 0;
-
-                @Override
-                public Thread newThread(Runnable r) {
-                    return new Thread(r, "Aio:WorkerThread-" + (++index));
-                }
-            });
-
-            reader = new Reader<>(readExecutorService);
             this.aioPipeFunction = aioPipeFunction;
             asynchronousChannelThreadPool = AsynchronousChannelGroup.withFixedThreadPool(config.getServerThreadNum(), new ThreadFactory() {
                 byte index = 0;
@@ -136,12 +133,14 @@ public class AioServer<T> implements Runnable {
                         IOUtils.closeChannel(channel);
                         LOGGER.warn("[X]Find black IP ({}),so close connetion.", remoteAddressStr);
                     } else {
-                        readExecutorService.execute(new Runnable() {
+                        /*readExecutorService.execute(new Runnable() {
                             @Override
                             public void run() {
                                 createPipe(channel);
                             }
-                        });
+                        });*/
+
+                        createPipe(channel);
 
                     }
                     serverSocketChannel.accept(serverSocketChannel, this);
@@ -199,6 +198,19 @@ public class AioServer<T> implements Runnable {
 
         }
         return pipe;
+    }
+
+    private static final int WORKER_BUFFER_SIZE = 1024 * 32;
+    private static Disruptor<AioReadEvent> createDisrupter() {
+        Disruptor<AioReadEvent> disruptor =
+                new Disruptor<AioReadEvent>(
+                        AioReadEvent.EVENT_FACTORY,
+                        WORKER_BUFFER_SIZE,
+                        DaemonThreadFactory.INSTANCE,
+                        ProducerType.MULTI,
+                        new BlockingWaitStrategy());
+        disruptor.handleEventsWith(new AioReadEventHandler());
+        return disruptor;
     }
 
     /**

@@ -1,6 +1,9 @@
 package com.artlongs.amq.http;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.util.Arrays;
@@ -13,6 +16,7 @@ import java.util.Map;
 *
 */
 public class Request extends Http implements HttpRequest {
+	private static Logger logger = LoggerFactory.getLogger(Request.class);
 
 	public String method = METHOD_GET;
 	public String uri;
@@ -32,20 +36,25 @@ public class Request extends Http implements HttpRequest {
 	 * @param data
 	 * @returnH
 	 */
-	public synchronized Request build(ByteBuffer data){
-		data.rewind();
-		CharBuffer buffer = HttpServerConfig.charsets.decode(data);
-		sourceTxt.append(buffer);
-		if(state == ReadState.BEGIN || state == ReadState.REQ_FIRST_LINE) {
-			resolveFirstLine();
+	public Request build(ByteBuffer data){
+		try {
+			data.rewind();
+			CharBuffer buffer = HttpServerConfig.charsets.decode(data);
+			sourceTxt.append(buffer);
+			if(state == ReadState.BEGIN || state == ReadState.REQ_FIRST_LINE) {
+				resolveFirstLine();
+			}
+			if(state == ReadState.HEADERS) {
+				resolveHeader();
+			}
+			if(state == ReadState.BODY) {
+				resolveBody(sourceTxt);
+			}
+			return this;
+		} catch (Exception e) {
+			logger.error("解码出错导致创建 REQ 失败.",e);
 		}
-		if(state == ReadState.HEADERS) {
-			resolveHeader();
-		}
-		if(state == ReadState.BODY) {
-			resolveBody(sourceTxt);
-		}
-		return this;
+		return new Request();
 	}
 	private void resolveFirstLine() {
 		state = ReadState.REQ_FIRST_LINE;

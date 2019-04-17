@@ -43,11 +43,11 @@ public class AioMqServer {
             //
             ProcessorImpl.INST.init();
             //
-            scheduler();
-            //
             startAdmin();
             //
             startCommond();
+            //
+            scheduler();
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
         }

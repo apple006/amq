@@ -12,12 +12,12 @@ import java.nio.channels.CompletionHandler;
  * @author: leeton on 2019/2/22.
  */
 public class Writer<T> implements CompletionHandler<Integer, AioPipe<T>> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Writer.class);
+    private static final Logger logger = LoggerFactory.getLogger(Writer.class);
 
     @Override
     public void completed(Integer size, AioPipe<T> pipe) {
         try {
-            System.err.println("write completed .");
+            logger.debug("write completed .");
             // 接收到的消息进行预处理
             Monitor monitor = pipe.getServerConfig().getProcessor().getMonitor();
             if (monitor != null) {
@@ -34,25 +34,18 @@ public class Writer<T> implements CompletionHandler<Integer, AioPipe<T>> {
 
     @Override
     public void failed(Throwable exc, AioPipe<T> pipe) {
-        whenErrDoWaiting();
         pipe.clearWriteBufferAndUnLock();
         try {
             pipe.getServerConfig().getProcessor().stateEvent(pipe, State.OUTPUT_EXCEPTION, exc);
         } catch (Exception e) {
-            LOGGER.debug(e.getMessage(), e);
+            logger.debug(e.getMessage(), e);
         }
         try {
             pipe.close();
         } catch (Exception e) {
-            LOGGER.debug(e.getMessage(), e);
+            logger.debug(e.getMessage(), e);
         }
     }
-    private void whenErrDoWaiting(){
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
+
 
 }

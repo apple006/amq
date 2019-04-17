@@ -23,7 +23,8 @@ public class AioPipe<T> implements Serializable {
     private static final Logger logger = LoggerFactory.getLogger(AioPipe.class);
 
     private Integer id;
-    Semaphore writeSemaphore = new Semaphore(1);
+    private Semaphore writeSemaphore = new Semaphore(1);
+    private Semaphore readSemaphore = new Semaphore(1);
 
     /**
      * Session状态:正常
@@ -80,7 +81,8 @@ public class AioPipe<T> implements Serializable {
         this.reader = reader;
         this.writer = writer;
         this.ioServerConfig = config;
-        this.writeCacheQueue = config.getQueueSize() > 0 ? new RingBufferQueue(config.getQueueSize()) : null;
+//        this.writeCacheQueue = AioServerConfig.writeCacheQueue;
+        this.writeCacheQueue = new RingBufferQueue<>(config.getQueueSize());
         //初始化状态机
         config.getProcessor().stateEvent(this, State.NEW_PIPE, null);
         this.readBuffer = DirectBufferUtil.allocateDirectBuffer(config.getDirctBufferSize());
@@ -204,9 +206,7 @@ public class AioPipe<T> implements Serializable {
             }else {
                 writeBuffer.clear();
             }
-            ByteBuffer headBuffer = writeCacheQueue.pop();
-            writeBuffer.put(headBuffer);
-            writeBuffer.flip();
+            writeBuffer = writeCacheQueue.pop();
         }
         continueWrite();
     }
@@ -215,7 +215,7 @@ public class AioPipe<T> implements Serializable {
     /**
      * 触发通道的读操作，当发现存在严重消息积压时,会触发流控
      */
-    void readFromChannel(boolean eof) {
+    public void readFromChannel(boolean eof) {
         //处于流控状态
         if (flowControl ) {
             return;
@@ -230,9 +230,8 @@ public class AioPipe<T> implements Serializable {
             try {
                 dataEntry = ioServerConfig.getProtocol().decode(readBuffer);
             } catch (Exception e) {
-                logger.error(e.getMessage(), e);
+                logger.error("[AIO]解码出错: "+e.getMessage(), e);
                 ioServerConfig.getProcessor().stateEvent(this, State.DECODE_EXCEPTION, e);
-                throw e;
             }
             if (dataEntry == null) {
                 break;
@@ -249,7 +248,7 @@ public class AioPipe<T> implements Serializable {
 
         if (eof || status == CLOSING) {
             close(false);
-//            ioServerConfig.getProcessor().stateEvent(this, State.INPUT_SHUTDOWN, null);
+            ioServerConfig.getProcessor().stateEvent(this, State.INPUT_SHUTDOWN, null);
             return;
         }
         if (status == CLOSED) {
@@ -266,11 +265,15 @@ public class AioPipe<T> implements Serializable {
             readBuffer.position(readBuffer.limit());
             readBuffer.limit(readBuffer.capacity());
         }
+        readSemaphore.release();
         continueRead();
     }
 
     protected void continueRead() {
-        readFromChannel0(readBuffer);
+//        if (readSemaphore.tryAcquire()) {
+            readFromChannel0(readBuffer);
+//        }
+
     }
 
     protected void continueWrite() {
@@ -294,7 +297,7 @@ public class AioPipe<T> implements Serializable {
     public synchronized void close(boolean immediate) {
         //status == SESSION_STATUS_CLOSED说明close方法被重复调用
         if (status == CLOSED) {
-            logger.warn("ignore, pipe:{} is closed:", getId());
+            logger.warn("pipe:{} is closed:", getId());
             writeSemaphore.release();
             return;
         }
@@ -398,7 +401,6 @@ public class AioPipe<T> implements Serializable {
         if (this.writeBuffer != null && this.writeBuffer.isDirect()) {
             DirectBufferUtil.freeFirstBuffer(writeBuffer);
         }
-        this.writeBuffer.clear();
         this.writeBuffer = null;
         this.writeSemaphore.release();
     }
