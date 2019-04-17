@@ -1,8 +1,8 @@
 package com.artlongs.amq.core.aio;
 
 import com.artlongs.amq.core.aio.plugin.*;
-import com.artlongs.amq.core.event.AioReadEvent;
-import com.artlongs.amq.core.event.AioReadEventHandler;
+import com.artlongs.amq.core.event.AioEvent;
+import com.artlongs.amq.core.event.AioEventHandler;
 import com.artlongs.amq.disruptor.BlockingWaitStrategy;
 import com.artlongs.amq.disruptor.RingBuffer;
 import com.artlongs.amq.disruptor.dsl.Disruptor;
@@ -58,7 +58,7 @@ public class AioServer<T> implements Runnable {
     private boolean checkAlive = false;
 
     private ExecutorService readExecutorService;
-    public static RingBuffer<AioReadEvent> readRingBuffer = createDisrupter().start();
+    public static RingBuffer<AioEvent> readRingBuffer = createDisrupter().start();
 
     /**
      * 设置服务端启动必要参数配置
@@ -170,7 +170,7 @@ public class AioServer<T> implements Runnable {
         try {
             pipe = aioPipeFunction.apply(channel);
             pipe.initSession();
-            System.err.println("create pipid = "+ pipe.getId());
+//            System.err.println("create pipid = "+ pipe.getId());
             if (null != pipe) {
                 channelAliveMap.putIfAbsent(pipe.getId(), pipe);
             }
@@ -201,15 +201,15 @@ public class AioServer<T> implements Runnable {
     }
 
     private static final int WORKER_BUFFER_SIZE = 1024 * 32;
-    private static Disruptor<AioReadEvent> createDisrupter() {
-        Disruptor<AioReadEvent> disruptor =
-                new Disruptor<AioReadEvent>(
-                        AioReadEvent.EVENT_FACTORY,
+    private static Disruptor<AioEvent> createDisrupter() {
+        Disruptor<AioEvent> disruptor =
+                new Disruptor<AioEvent>(
+                        AioEvent.EVENT_FACTORY,
                         WORKER_BUFFER_SIZE,
                         DaemonThreadFactory.INSTANCE,
                         ProducerType.MULTI,
                         new BlockingWaitStrategy());
-        disruptor.handleEventsWith(new AioReadEventHandler());
+        disruptor.handleEventsWith(new AioEventHandler());
         return disruptor;
     }
 

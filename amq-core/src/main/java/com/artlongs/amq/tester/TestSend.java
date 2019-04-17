@@ -25,7 +25,7 @@ public class TestSend {
         for (int i = 0; i < 3; i++) { // 测试时,最好把 aioServer.setWriteQueueSize 的大小设置为 >= 测试次数
             TestUser user = new TestUser(i, "alice");
             processor.onlyPublish("topic_hello", user);
-            Thread.sleep(2,500);
+            Thread.sleep(0,500);
             System.err.println("send : " + user.toString());
         }
         System.err.println("Time(ms):"+(System.currentTimeMillis()-s));

@@ -359,7 +359,7 @@ public enum ProcessorImpl implements Processor {
         //追加订阅者的消息ID及状态
         changeMessageOnReply(subscribe, message);
         // 发送消息给订阅方
-        System.err.println("send mq to pipid = "+ subscribe.getPipeId());
+//        System.err.println("send mq to pipid = "+ subscribe.getPipeId());
         boolean writed = getPipeBy(subscribe.getPipeId()).write(IOUtils.wrap(serializer.toByte(message)));
         if (writed) {
             onSendSuccToPrcess(subscribe, message);

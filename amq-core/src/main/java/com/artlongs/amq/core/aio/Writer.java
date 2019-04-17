@@ -1,6 +1,7 @@
 package com.artlongs.amq.core.aio;
 
 import com.artlongs.amq.core.aio.plugin.Monitor;
+import com.artlongs.amq.core.event.AioEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +27,8 @@ public class Writer<T> implements CompletionHandler<Integer, AioPipe<T>> {
             // 清理
 //            pipe.clearWriteBufferAndUnLock();
             // 继续写操作
-            pipe.writeToChannel();
+//            pipe.writeToChannel();
+            AioServer.readRingBuffer.publishEvent(AioEvent::translate, pipe, false, size);
         } catch (Exception e) {
             failed(e, pipe);
         }

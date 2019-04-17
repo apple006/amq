@@ -1,7 +1,7 @@
 package com.artlongs.amq.core.aio;
 
 import com.artlongs.amq.core.aio.plugin.Monitor;
-import com.artlongs.amq.core.event.AioReadEvent;
+import com.artlongs.amq.core.event.AioEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +51,7 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
                     monitor.read(aioPipe, size);
                 }
             }
-            AioServer.readRingBuffer.publishEvent(AioReadEvent::translate, aioPipe, size);
+            AioServer.readRingBuffer.publishEvent(AioEvent::translate, aioPipe, true,size);
 //            aioPipe.readFromChannel(size == -1);
         } catch (Exception e) {
             failed(e, aioPipe);

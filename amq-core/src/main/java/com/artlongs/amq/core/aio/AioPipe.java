@@ -1,7 +1,5 @@
 package com.artlongs.amq.core.aio;
 
-import com.artlongs.amq.disruptor.RingBuffer;
-import com.artlongs.amq.tools.FastBlockingQueue;
 import com.artlongs.amq.tools.RingBufferQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +9,6 @@ import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -176,7 +173,7 @@ public class AioPipe<T> implements Serializable {
      * <p>若缓冲队列(writeCacheQueue)为空,说明数据已传输完毕,则清空 writeBuffer 并解锁</p>
      * <p>如果存在流控并符合释放条件，则触发读操作</p>
      */
-    void writeToChannel() {
+   public void writeToChannel() {
         if (writeBuffer != null && writeBuffer.hasRemaining()) {
             continueWrite();
             return;
