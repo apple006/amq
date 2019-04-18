@@ -22,6 +22,7 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.Function;
 
@@ -90,7 +91,7 @@ public class AioServer<T> implements Runnable {
         if (config.isBannerEnabled()) {
             LOGGER.info(config.BANNER + "\r\n :: amq-socket ::\t(" + config.VERSION + ")");
         }
-        start0((AsynchronousSocketChannel channel)->new AioPipe<T>(channel, config, new Reader<>(), new Writer<>()));
+        start0((AsynchronousSocketChannel channel)->new AioPipe<T>(channel, config, reader, new Writer<>()));
     }
 
     /**
@@ -100,10 +101,18 @@ public class AioServer<T> implements Runnable {
      */
     protected final void start0(Function<AsynchronousSocketChannel, AioPipe<T>> aioPipeFunction) throws IOException {
         try {
+            readExecutorService = Executors.newFixedThreadPool(config.getServerThreadNum(), new ThreadFactory() {
+                byte index = 0;
+                @Override
+                public Thread newThread(Runnable r) {
+                    return new Thread(r, "Aio:read-" + (++index));
+                }
+            });
+            reader = new Reader<>(readExecutorService);
+
             this.aioPipeFunction = aioPipeFunction;
             asynchronousChannelThreadPool = AsynchronousChannelGroup.withFixedThreadPool(config.getServerThreadNum(), new ThreadFactory() {
                 byte index = 0;
-
                 @Override
                 public Thread newThread(Runnable r) {
                     return new Thread(r, "Aio:accept-" + (++index));
@@ -133,15 +142,13 @@ public class AioServer<T> implements Runnable {
                         IOUtils.closeChannel(channel);
                         LOGGER.warn("[X]Find black IP ({}),so close connetion.", remoteAddressStr);
                     } else {
-                        /*readExecutorService.execute(new Runnable() {
+                        readExecutorService.execute(new Runnable() {
                             @Override
                             public void run() {
                                 createPipe(channel);
                             }
-                        });*/
-
-                        createPipe(channel);
-
+                        });
+//                        createPipe(channel);
                     }
                     serverSocketChannel.accept(serverSocketChannel, this);
                 }

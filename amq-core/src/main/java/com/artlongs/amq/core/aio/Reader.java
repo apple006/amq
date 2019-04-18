@@ -1,7 +1,6 @@
 package com.artlongs.amq.core.aio;
 
 import com.artlongs.amq.core.aio.plugin.Monitor;
-import com.artlongs.amq.core.event.AioEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +25,7 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
         this.executorService = executorService;
     }
 
-/*    @Override
+    @Override
     public void completed(final Integer result, final AioPipe<T> aioSession) {
         if (executorService != null && threadLocal.get() == null) {
             executorService.execute(new Runnable() {
@@ -40,8 +39,8 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
         } else {
             completed0(result, aioSession);
         }
-    }*/
-    public void completed(final Integer size, final AioPipe<T> aioPipe) {
+    }
+    public void completed0(final Integer size, final AioPipe<T> aioPipe) {
         try {
 //            logger.debug("read is completed" );
             if(size>0){
@@ -51,8 +50,8 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
                     monitor.read(aioPipe, size);
                 }
             }
-            AioServer.readRingBuffer.publishEvent(AioEvent::translate, aioPipe, size);
-//            aioPipe.readFromChannel(size == -1);
+//            AioServer.readRingBuffer.publishEvent(AioEvent::translate, aioPipe, size);
+            aioPipe.readFromChannel(size == -1);
         } catch (Exception e) {
             failed(e, aioPipe);
         }
