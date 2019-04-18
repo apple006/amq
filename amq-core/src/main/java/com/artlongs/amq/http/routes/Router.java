@@ -43,7 +43,7 @@ public class Router implements HttpHandler {
      * @return a new {@code Router}
      */
     public static Router asRouter(Class<? extends Controller>... classes) {
-        if (classes == null)
+        if (null == classes)
             throw new IllegalArgumentException();
         Router router = new Router();
         for (Class<? extends Controller> c : classes)
@@ -62,7 +62,7 @@ public class Router implements HttpHandler {
      * @return a new {@code Router}
      */
     public static Router asRouter(Controller... controllers) {
-        if (controllers == null) throw new IllegalArgumentException();
+        if (null == controllers) throw new IllegalArgumentException();
         Router router = new Router();
         for (Controller controller : controllers) {
             Router.addRoutes(controller.getClass(), controller, router);
@@ -99,7 +99,7 @@ public class Router implements HttpHandler {
      * @param router     the target router
      */
     public static void addRoutes(Controller controller, Router router) {
-        if (controller == null)
+        if (null == controller)
             throw new IllegalArgumentException();
         Router.addRoutes(controller.getClass(), controller, router);
     }
@@ -116,7 +116,7 @@ public class Router implements HttpHandler {
      * @param router          the target router
      */
     private static void addRoutes(Class<? extends Controller> controllerClass, Controller controller, Router router) {
-        if (controllerClass == null || router == null)
+        if (null == controllerClass || null == router)
             throw new IllegalArgumentException();
         Class c = controllerClass;
         do {
@@ -156,7 +156,7 @@ public class Router implements HttpHandler {
                     route.where(parameters.get(i), indexes[i]);
                 }
                 boolean isStatic = Modifier.isStatic(method.getModifiers());
-                if (!isStatic && controller == null)
+                if (!isStatic && null == controller)
                     throw new IllegalArgumentException("Illegal route. Methods must be declared static for non-instantiated controllers.");
                 route.use(method, isStatic ? null : controller);
                 router.add(route);
@@ -213,8 +213,8 @@ public class Router implements HttpHandler {
      * @return {@code this} for method-chaining
      */
     public Router add(Route route) {
-        if (route == null)
-            throw new IllegalArgumentException();
+        if (null == route) throw new IllegalArgumentException();
+
         String requestType = route.requestType(); // GET/POST ...
         if (routes.containsKey(requestType)) {
             List<Route> routeList = routes.get(requestType);

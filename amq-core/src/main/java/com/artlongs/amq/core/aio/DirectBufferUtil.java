@@ -128,7 +128,7 @@ public class DirectBufferUtil {
 
                     while ((var4 = this.next(var4)) != this.start) {
                         ByteBuffer var5 = var2[var4];
-                        if (var5 == null) {
+                        if (null == var5) {
                             break;
                         }
 
@@ -138,7 +138,7 @@ public class DirectBufferUtil {
                         }
                     }
 
-                    if (var3 == null) {
+                    if (null == var3) {
                         return null;
                     }
 

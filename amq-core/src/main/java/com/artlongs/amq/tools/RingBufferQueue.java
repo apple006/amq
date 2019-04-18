@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class RingBufferQueue<T> implements Iterable {
     private static Logger logger = LoggerFactory.getLogger(RingBufferQueue.class);
-    private static int DEFAULT_SIZE = 256;
+    private static int DEFAULT_SIZE = 2000;
     private T[] items;
     private AtomicInteger head = new AtomicInteger(0);
     private AtomicInteger tail = new AtomicInteger(0);

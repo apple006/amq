@@ -31,7 +31,7 @@ public class Subscribe implements Serializable {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (null == o || getClass() != o.getClass()) return false;
         Subscribe subscribe = (Subscribe) o;
         return Objects.equals(topic, subscribe.topic) &&
                 Objects.equals(pipeId, subscribe.pipeId);

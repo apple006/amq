@@ -47,7 +47,7 @@ public class MqServerProcessor extends AioBaseProcessor<ByteBuffer> {
 
     private void decodeAndSend(AioPipe pipe, ByteBuffer buffer) {
         Message message = decode(buffer);
-        logger.debug("read and send:" + message.toString());
+        logger.debug("AIO decode and send:" + message.toString());
         ProcessorImpl.INST.onMessage(pipe, message);
     }
 

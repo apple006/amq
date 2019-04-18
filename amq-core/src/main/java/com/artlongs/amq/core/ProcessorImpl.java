@@ -144,7 +144,7 @@ public enum ProcessorImpl implements Processor {
             } else {
                 pulishJobEvent(pipe, buffer);
             }*/
-            logger.error(" rece msg form aio ...");
+//            logger.error(" rece msg form aio ...");
             pulishJobEvent(pipe, buffer);
 //            decodeAndDisruptor(pipe, buffer);
         }

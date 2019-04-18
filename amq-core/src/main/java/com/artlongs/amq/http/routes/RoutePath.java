@@ -18,8 +18,8 @@ public class RoutePath {
     }
 
     public static int parameterCount(String path) {
-        if (path == null)
-            throw new IllegalArgumentException();
+        if (null == path ) throw new IllegalArgumentException();
+
         Matcher matcher = Route.PARAMETER_PATTERN.matcher(path);
         int count = 0;
         while (matcher.find())
@@ -28,8 +28,8 @@ public class RoutePath {
     }
 
     public static List<String> parameters(String path) {
-        if (path == null)
-            throw new IllegalArgumentException();
+        if (null == path )throw new IllegalArgumentException();
+
         List<String> parameters = new ArrayList<>();
         Matcher matcher = Route.PARAMETER_PATTERN.matcher(path);
         int count = 0;
@@ -50,7 +50,7 @@ public class RoutePath {
 
     public static Method of(String methodPath, int parameterCount) throws ClassNotFoundException {
         int index;
-        if (methodPath == null || (index = methodPath.indexOf('@')) == -1 || index == methodPath.length() - 1)
+        if (null == methodPath || (index = methodPath.indexOf('@')) == -1 || index == methodPath.length() - 1)
             throw new IllegalArgumentException("Method path must be in the format ClassName@methodName");
         return RoutePath.of(methodPath.substring(0, index), methodPath.substring(index + 1), parameterCount);
     }
@@ -68,7 +68,7 @@ public class RoutePath {
     }
 
     public static Method of(Class<?> parent, String method, int parameterCount) {
-        if (parent == null || method == null || parameterCount < 0)
+        if (null == parent || null == method || parameterCount < 0)
             throw new IllegalArgumentException();
         Class<?> c = parent;
         do {

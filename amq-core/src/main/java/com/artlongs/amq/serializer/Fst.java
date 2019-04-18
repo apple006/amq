@@ -21,12 +21,12 @@ public enum Fst implements ISerializer {
     }
 
     public <T> byte[] toByte(T obj) {
-        if (obj == null) return null;
+        if (null == obj) return null;
         return fst.asByteArray(obj);
     }
 
     public <T> T getObj(byte[] bytes) {
-        if (bytes == null || bytes.length == 0) return null;
+        if (null == bytes || bytes.length == 0) return null;
         T obj = (T) fst.asObject(bytes);
         return obj;
     }

@@ -43,7 +43,7 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
     }*/
     public void completed(final Integer size, final AioPipe<T> aioPipe) {
         try {
-            logger.debug("read is completed" );
+//            logger.debug("read is completed" );
             if(size>0){
                 // 记录流量
                 Monitor<T> monitor = aioPipe.getServerConfig().getProcessor().getMonitor();

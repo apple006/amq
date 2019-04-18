@@ -221,7 +221,7 @@ public abstract class ByteBufferPool {
     public static void free(ByteBuffer[] array, int offs, int len) {
         for (int i = 0; i < len; i ++) {
             ByteBuffer buffer = array[offs + i];
-            if (buffer == null) {
+            if (null == buffer) {
                 continue;
             }
             final int size = buffer.capacity();

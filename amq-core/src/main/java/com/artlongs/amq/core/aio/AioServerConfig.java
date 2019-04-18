@@ -36,7 +36,7 @@ public class AioServerConfig<T> {
     /**
      * buffer队列初始容量大小,最好根据IO请求的并发量来设置(2的倍数)
      */
-    public static int queueSize = 10000;
+    public static int queueSize = 10_000_0_0;
     public static final RingBufferQueue<ByteBuffer> writeCacheQueue = new RingBufferQueue<>(queueSize);
 
     /**

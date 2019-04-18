@@ -176,7 +176,7 @@ public class AioServer<T> implements Runnable {
             }
         } catch (Exception e1) {
             LOGGER.debug(e1.getMessage(), e1);
-            if (pipe == null) {
+            if (null == pipe) {
                 try {
                     channel.shutdownInput();
                 } catch (IOException e) {

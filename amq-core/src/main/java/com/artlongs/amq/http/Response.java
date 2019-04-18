@@ -128,7 +128,7 @@ public class Response extends Http implements HttpResponse {
     }
 
     private void write2OutStream(ByteArrayOutputStream baos, byte[] data) {
-        if (data == null) return;
+        if (null == data) return;
         try {
             baos.write(data);
         } catch (IOException ex) {

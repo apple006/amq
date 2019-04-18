@@ -34,7 +34,7 @@ public class Route {
     private Object parent;
 
     public Route(String requestType, String path) {
-        if (requestType == null || path == null)
+        if (null == requestType || null == path)
             throw new IllegalArgumentException();
         this.requestType = requestType;
         this.path = path;
@@ -124,7 +124,7 @@ public class Route {
     }
 
     public boolean matches(String uri) {
-        if (uri == null)
+        if (null == uri)
             throw new IllegalArgumentException();
         return (evaluatedPattern != null ? evaluatedPattern : (evaluatedPattern = compile())).matcher(uri).matches();
     }
@@ -134,7 +134,7 @@ public class Route {
         Set<Object> valueSet = new HashSet<>();
         if (direct != null)
             return direct;
-        if (method == null)
+        if (null == method)
             throw new RuntimeException("No method configured for route. Route#use must be called to assign the method to invoke.");
         method.setAccessible(true);
         Matcher matcher = (evaluatedPattern != null ? evaluatedPattern : (evaluatedPattern = compile())).matcher(req.uri());
