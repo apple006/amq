@@ -115,8 +115,8 @@ public class AioPipe<T> implements Serializable {
                 logger.warn(" WritePendingException try to write again");
                 tooFastNeedSleep();
                 Integer id = buffer.hashCode();
-                if (isNotFoundInRewriteList(id) && id>0) {
-                    System.err.println("REWRIET ID:" + id);
+                if (isNotFoundInRewriteList(id) && id>0) { // 控制重写次数
+//                    System.err.println("REWRIET ID:" + id);
                     writeBuffer(buffer);
                     reWrite.add(id);
                 }
@@ -198,11 +198,6 @@ public class AioPipe<T> implements Serializable {
      * <p>如果存在流控并符合释放条件，则触发读操作</p>
      */
     public void writeToChannel() {
-/*        if (null != writeBuffer && writeBuffer.hasRemaining()) {
-            continueWrite();
-            return;
-        }*/
-
         if (null == writeCacheQueue || writeCacheQueue.size() == 0) {
             clearWriteBufferAndUnLock();
             //此时可能是Closing或Closed状态
@@ -222,13 +217,13 @@ public class AioPipe<T> implements Serializable {
             writeBuffer = writeCacheQueue.pop();
         }
 
-        //如果存在流控并符合释放条件，则触发读操作
-        //一定要放在continueWrite之前
-        if (flowControl &&  writeCacheQueue.size() < ioServerConfig.getReleaseLine()) {
+        //如果存在流控,则触发读操作,一定要放在continueWrite之前
+        if (flowControl &&  writeCacheQueue.size() > ioServerConfig.getReleaseLine()) {
             logger.warn("[AIO]写入的数据太多,触发了流控.");
             ioServerConfig.getProcessor().stateEvent(this, State.RELEASE_FLOW_LIMIT, null);
             flowControl = false;
             readFromChannel(false);
+            tooFastNeedSleep();
         }
 
         if (writeBuffer != null) {
@@ -242,10 +237,6 @@ public class AioPipe<T> implements Serializable {
      * 触发通道的读操作，当发现存在严重消息积压时,会触发流控
      */
     public void readFromChannel(boolean eof) {
-        //处于流控状态
-        if (flowControl) {
-            return;
-        }
         readBuffer.flip();
         while (readBuffer.hasRemaining()) {
             T dataEntry = null;
@@ -275,6 +266,12 @@ public class AioPipe<T> implements Serializable {
         }
         if (status == CLOSED) {
             return;
+        }
+
+        //流控达到释放条件
+        if (writeCacheQueue.size() < ioServerConfig.getReleaseLine()) {
+            flowControl = false;
+            writeToChannel();
         }
 
         //数据读取完毕
