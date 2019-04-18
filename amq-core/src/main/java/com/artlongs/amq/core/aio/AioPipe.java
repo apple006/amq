@@ -79,7 +79,6 @@ public class AioPipe<T> implements Serializable {
     public AioPipe(AsynchronousSocketChannel channel, AioServerConfig config, Reader<T> reader, Writer<T> writer) {
         this.channel = channel;
         this.ioServerConfig = config;
-//        this.writeCacheQueue = AioServerConfig.writeCacheQueue;
         this.writeCacheQueue = new RingBufferQueue<>(config.getQueueSize());
         //初始化状态机
         config.getProcessor().stateEvent(this, State.NEW_PIPE, null);
@@ -104,6 +103,7 @@ public class AioPipe<T> implements Serializable {
     }
 
     private Set<Integer> reWrite = new HashSet<>(2000);
+
     /**
      * 内部方法：触发通道的写操作
      */
@@ -112,10 +112,10 @@ public class AioPipe<T> implements Serializable {
             try {
                 channel.write(buffer, this, new Writer<>());
             } catch (WritePendingException e) { // 发生了写并发冲突,放回队列重来
-                logger.warn(" WritePendingException try to write again");
+                logger.warn("[AIO]WritePendingException try to write again");
                 tooFastNeedSleep();
                 Integer id = buffer.hashCode();
-                if (isNotFoundInRewriteList(id) && id>0) { // 控制重写次数
+                if (isNotFoundInRewriteList(id) && id > 0) { // 控制重写次数
 //                    System.err.println("REWRIET ID:" + id);
                     writeBuffer(buffer);
                     reWrite.add(id);
@@ -171,7 +171,7 @@ public class AioPipe<T> implements Serializable {
      */
     private final boolean writeToCacheQueue(final ByteBuffer buffer) {
         if (isClose()) {
-            logger.error(" pipe({}) is " + (status == CLOSED ? "closed" : "invalid"), getId());
+            logger.error("pipe({}) is " + (status == CLOSED ? "closed" : "invalid"), getId());
             return false;
         }
         if (!buffer.hasRemaining()) {
@@ -218,7 +218,7 @@ public class AioPipe<T> implements Serializable {
         }
 
         //如果存在流控,则触发读操作,一定要放在continueWrite之前
-        if (flowControl &&  writeCacheQueue.size() > ioServerConfig.getReleaseLine()) {
+        if (flowControl && writeCacheQueue.size() > ioServerConfig.getReleaseLine()) {
             logger.warn("[AIO]写入的数据太多,触发了流控.");
             ioServerConfig.getProcessor().stateEvent(this, State.RELEASE_FLOW_LIMIT, null);
             flowControl = false;
@@ -298,7 +298,7 @@ public class AioPipe<T> implements Serializable {
             try {
                 readFromChannel0(readBuffer);
             } catch (ReadPendingException e) {
-                logger.warn(" ReadPendingException try to read again");
+                logger.warn("[AIO]ReadPendingException try to read again");
                 continueRead();
             }
         } else {
@@ -459,7 +459,7 @@ public class AioPipe<T> implements Serializable {
         this.writeSemaphore.release();
     }
 
-    private void tooFastNeedSleep(){
+    private void tooFastNeedSleep() {
         try {
             Thread.sleep(100);
         } catch (InterruptedException e) {

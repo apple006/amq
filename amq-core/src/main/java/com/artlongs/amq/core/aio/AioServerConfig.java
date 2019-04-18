@@ -1,10 +1,8 @@
 package com.artlongs.amq.core.aio;
 
 import com.artlongs.amq.core.MqConfig;
-import com.artlongs.amq.tools.RingBufferQueue;
 
 import java.net.SocketOption;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,9 +34,7 @@ public class AioServerConfig<T> {
     /**
      * buffer队列初始容量大小,最好根据IO请求的并发量来设置(2的倍数)
      */
-    public static int queueSize = 10_000;
-    public static final RingBufferQueue<ByteBuffer> writeCacheQueue = new RingBufferQueue<>(queueSize);
-
+    public int queueSize = 10_000;
     /**
      * 消息体缓存大小,字节(这个实际上是一条消息的最大容量)
      */

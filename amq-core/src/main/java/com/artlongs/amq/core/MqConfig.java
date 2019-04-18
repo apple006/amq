@@ -31,7 +31,7 @@ public enum MqConfig {
     public int server_channel_event_thread_size = 16;
 
     // 客户端的连接线程池大小(2的倍数,等同于开了多少个客户端)
-    public int client_connect_thread_pool_size = 8;
+    public int client_connect_thread_pool_size = 2;
     // 客户端的的每一个channel 处理事件的线程数大小,实际上是(AsynchronousChannelGroup)的大小
     public int client_channel_event_thread_size = 8;
 
@@ -45,14 +45,14 @@ public enum MqConfig {
     public boolean mq_auto_acked = true;
 
     // 开启重发-->未签收消息
-    public boolean start_msg_not_acked_resend = false;
+    public boolean start_msg_not_acked_resend = true;
     // 间隔x秒,重发未签收消息
     public int msg_not_acked_resend_period = 10;
     // 重发未签收消息的最大次数
     public int msg_not_acked_resend_max_times = 3;
 
     //开启重发-->发送失败的消息
-    public boolean start_msg_falt_message_resend = false;
+    public boolean start_msg_falt_message_resend = true;
     // 间隔x秒,发送失败的消息重发间隔
     public int msg_falt_message_resend_period = 60;
     //发送失败的消息重发的最大次数

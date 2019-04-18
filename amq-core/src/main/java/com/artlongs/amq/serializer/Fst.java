@@ -16,8 +16,14 @@ public enum Fst implements ISerializer {
     FSTConfiguration fst_json = FSTConfiguration.createJsonConfiguration();
     Fst() {
         fst.registerClass(Message.class);
+        fst.registerClass(Message.Stat.class);
+        fst.registerClass(Message.Type.class);
+        fst.registerClass(Message.Listen.class);
+        fst.registerClass(Message.Life.class);
+        fst.registerClass(Message.ON.class);
         fst.registerClass(Subscribe.class);
         fst.registerClass(Render.class);
+        fst.registerClass(Render.Fmt.class);
     }
 
     public <T> byte[] toByte(T obj) {
