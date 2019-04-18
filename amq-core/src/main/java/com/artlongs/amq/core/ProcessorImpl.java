@@ -411,7 +411,7 @@ public enum ProcessorImpl implements Processor {
                 logger.warn("remove subscribe when pipeId is null ." + subscribe);
                 return true;
             }
-            if (getPipeBy(subscribe.getPipeId()).isInvalid()) {
+            if (getPipeBy(subscribe.getPipeId()).isClose()) {
                 cache_subscribe.remove(subscribe.getIdx());
                 logger.warn("remove subscribe on pipe ({}) is CLOSED.", subscribe.getPipeId());
                 return true;

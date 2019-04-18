@@ -200,8 +200,8 @@ public class AioServer<T> implements Runnable {
         return pipe;
     }
 
-    private static final int WORKER_BUFFER_SIZE = 1024 * 32;
     private static Disruptor<AioEvent> createDisrupter() {
+        final int WORKER_BUFFER_SIZE = 1024 * 32;
         Disruptor<AioEvent> disruptor =
                 new Disruptor<AioEvent>(
                         AioEvent.EVENT_FACTORY,
@@ -212,6 +212,7 @@ public class AioServer<T> implements Runnable {
         disruptor.handleEventsWith(new AioEventHandler());
         return disruptor;
     }
+
 
     /**
      * 停止服务端

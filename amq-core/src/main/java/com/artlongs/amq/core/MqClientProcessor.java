@@ -6,11 +6,15 @@ import com.artlongs.amq.core.aio.State;
 import com.artlongs.amq.serializer.ISerializer;
 import com.artlongs.amq.tools.IOUtils;
 import org.osgl.util.C;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Func :
@@ -18,8 +22,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author: leeton on 2019/2/25.
  */
 public class MqClientProcessor extends AioBaseProcessor<ByteBuffer> implements MqClientAction {
+    private static Logger logger = LoggerFactory.getLogger(MqClientProcessor.class);
 
     private AioPipe<ByteBuffer> pipe;
+
+    private Semaphore clientExecLock = new Semaphore(1);
 
     /**
      * 客户端返回的消息包装
@@ -34,24 +41,42 @@ public class MqClientProcessor extends AioBaseProcessor<ByteBuffer> implements M
 
     @Override
     public void process0(AioPipe<ByteBuffer> pipe, ByteBuffer buffer) {
-        try {
-            Message message = serializer.getObj(buffer);
-            if (null != message) {
-                String subscribeId = message.getSubscribeId();
-                if (C.notEmpty(callBackMap) && null != callBackMap.get(subscribeId)) {
-                    callBackMap.get(subscribeId).back(message);
+        prcessMsg(buffer);
+    }
+
+    private void prcessMsg(ByteBuffer buffer) {
+        if (tryAcquire(50)) {
+            try {
+                Message message = serializer.getObj(buffer);
+                if (null != message) {
+                    clientExecLock.release();
+                    String subscribeId = message.getSubscribeId();
+                    if (C.notEmpty(callBackMap) && null != callBackMap.get(subscribeId)) {
+                        callBackMap.get(subscribeId).back(message);
+                    }
+                    if (C.notEmpty(futureResultMap) && null != futureResultMap.get(subscribeId)) {
+                        futureResultMap.get(subscribeId).complete(message);
+                    }
                 }
-                if (C.notEmpty(futureResultMap) && null != futureResultMap.get(subscribeId)) {
-                    futureResultMap.get(subscribeId).complete(message);
-                }
+            } catch (Exception e) {
+                logger.error("[C] Client prcess decode exception: ", e);
+                clientExecLock.release();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
+    private boolean tryAcquire(int timeout) {
+        try {
+            return clientExecLock.tryAcquire(timeout, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     @Override
-    public <V>void subscribe(String topic, Call<V> callBack) {
+    public <V> void subscribe(String topic, Call<V> callBack) {
         subscribe(topic, null, callBack);
     }
 
@@ -127,6 +152,9 @@ public class MqClientProcessor extends AioBaseProcessor<ByteBuffer> implements M
         }
         if (null != throwable) {
             throwable.printStackTrace();
+        }
+        if (State.NEW_PIPE != state) {
+            logger.warn("[C]消息处理,状态:{}, EX:{}", state.toString(), throwable);
         }
     }
 

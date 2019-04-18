@@ -1,6 +1,7 @@
 package com.artlongs.amq.http;
 
 
+import com.artlongs.amq.serializer.ISerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +27,8 @@ public class Request extends Http implements HttpRequest {
 	public final Map<String,String> headers = new LinkedHashMap<>();
 	public final Map<String,Object> params = new LinkedHashMap<>();
 	private ReadState state = ReadState.BEGIN;
+
+	private static ISerializer serializer = ISerializer.Serializer.INST.of();
 
 	public enum ReadState {
 		BEGIN, REQ_FIRST_LINE,HEADERS, BODY, END

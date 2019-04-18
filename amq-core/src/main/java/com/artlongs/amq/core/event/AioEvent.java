@@ -11,8 +11,6 @@ import com.artlongs.amq.disruptor.EventFactory;
 public class AioEvent {
     private AioPipe pipe;
     private int readSize;
-    private boolean read;
-
     public static final EventFactory<AioEvent> EVENT_FACTORY = new EventFactory<AioEvent>()
     {
         public AioEvent newInstance()
@@ -21,10 +19,9 @@ public class AioEvent {
         }
     };
 
-    public static void translate(AioEvent event, long sequence, AioPipe pipe,boolean read, int readSize) {
+    public static void translate(AioEvent event, long sequence, AioPipe pipe, int readSize) {
         event.setPipe(pipe);
         event.setReadSize(readSize);
-        event.setRead(read);
     }
 
     ///========================
@@ -44,13 +41,5 @@ public class AioEvent {
     public AioEvent setReadSize(int readSize) {
         this.readSize = readSize;
         return this;
-    }
-
-    public boolean isRead() {
-        return read;
-    }
-
-    public void setRead(boolean read) {
-        this.read = read;
     }
 }

@@ -14,10 +14,6 @@ public class AioEventHandler implements EventHandler<AioEvent> {
 
     @Override
     public void onEvent(AioEvent event, long sequence, boolean endOfBatch) throws Exception {
-        if (event.isRead()) {
-            event.getPipe().readFromChannel(event.getReadSize() == -1);
-        } else {
-            event.getPipe().writeToChannel();
-        }
+        event.getPipe().readFromChannel(event.getReadSize() == -1);
     }
 }

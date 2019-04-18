@@ -51,7 +51,7 @@ public class Reader<T> implements CompletionHandler<Integer, AioPipe<T>> {
                     monitor.read(aioPipe, size);
                 }
             }
-            AioServer.readRingBuffer.publishEvent(AioEvent::translate, aioPipe, true,size);
+            AioServer.readRingBuffer.publishEvent(AioEvent::translate, aioPipe, size);
 //            aioPipe.readFromChannel(size == -1);
         } catch (Exception e) {
             failed(e, aioPipe);

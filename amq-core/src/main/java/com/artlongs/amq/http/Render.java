@@ -2,6 +2,7 @@ package com.artlongs.amq.http;
 
 import com.alibaba.fastjson.JSON;
 import com.artlongs.amq.http.routes.Controller;
+import com.artlongs.amq.serializer.ISerializer;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,6 +25,8 @@ public class Render<T> implements HttpHandler, Controller, Serializable {
     private T params;
     private Fmt fmt;
     private static final String root = "views";
+
+    private static ISerializer serializer = ISerializer.Serializer.INST.of();
 
     public Render(String templateUrl, T params) {
         this.templateUrl = templateUrl;
@@ -62,8 +65,7 @@ public class Render<T> implements HttpHandler, Controller, Serializable {
 
 
     /**
-     * 读取模板文件
-     *
+     * 读取模板文件ghiob +
      * @param url 模板
      * @return
      */

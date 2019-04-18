@@ -17,9 +17,16 @@ import org.slf4j.LoggerFactory;
 public class HttpStart extends Thread implements Controller {
 	private static Logger logger = LoggerFactory.getLogger(HttpStart.class);
 
+/*
     @Get("/hello")
     public Render index() {
         return Render.template("/hello.html");
+    }
+*/
+
+    @Get("/hello")
+    public Render index() {
+        return Render.json("hello world.");
     }
 
     @Get("/user/{username}")
