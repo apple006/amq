@@ -41,7 +41,7 @@ public class TestController {
                 System.err.println("accept a job: " +job);
                 // 完成任务 JOB
                 if (user.getId().equals(job.getV())) {
-                    amqClient.<TestUser>finishJob(jobTopc, user,job);
+                    amqClient.<TestUser>finishJob(jobTopc, user,job.getK().getId());
                 }
             }
         });

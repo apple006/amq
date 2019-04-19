@@ -24,7 +24,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ExecutorService;
 
 import static java.lang.Thread.currentThread;
 
@@ -76,20 +77,17 @@ public enum ProcessorImpl implements Processor {
     ExecutorService bizPool = null;
     ExecutorService storePool = null;
     ISerializer serializer = ISerializer.Serializer.INST.of();
-    LinkedBlockingQueue<QueueItem> publishQueue = new LinkedBlockingQueue(10000);
     private Disruptor mqDisruptor;
 
     private static boolean shutdowNow = false; // 关闭服务
-
-    Semaphore track = new Semaphore(1, true);
 
     ProcessorImpl() {
         this.mqDisruptor = createDisrupter();
         this.job_worker = mqDisruptor.start();
         //
-        jobPool = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
-        bizPool = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
-        storePool = Executors.newFixedThreadPool(MqConfig.inst.worker_thread_pool_size, DaemonThreadFactory.INSTANCE);
+        jobPool = IOUtils.createFixedThreadPool(MqConfig.inst.worker_thread_pool_size, "MQ:job-");
+        bizPool = IOUtils.createFixedThreadPool(MqConfig.inst.worker_thread_pool_size, "MQ:biz-");
+        storePool = IOUtils.createFixedThreadPool(MqConfig.inst.worker_thread_pool_size, "MQ:store-");
         //
         this.biz_worker_pool = createWorkerPool(new BizEventHandler());
         this.biz_worker = biz_worker_pool.start(bizPool);
@@ -99,7 +97,7 @@ public enum ProcessorImpl implements Processor {
 
     }
 
-    public ProcessorImpl init(){
+    public ProcessorImpl init() {
         return this;
     }
 
@@ -137,37 +135,22 @@ public enum ProcessorImpl implements Processor {
     }
 
     public void onMessage(AioPipe pipe, ByteBuffer buffer) {
-        if(!shutdowNow){
-//            waitOnPublish();
-/*            if (MqConfig.inst.start_mq_publish_of_safe_queue) {
-                publicJobByQuene(pipe, buffer);
-            } else {
-                pulishJobEvent(pipe, buffer);
-            }*/
-//            logger.error(" rece msg form aio ...");
+        if (!shutdowNow) {
             pulishJobEvent(pipe, buffer);
-//            decodeAndDisruptor(pipe, buffer);
+//          decodeAndDisruptor(pipe, buffer);
         }
     }
 
     private void decodeAndDisruptor(AioPipe pipe, ByteBuffer buffer) {
         Message message = serializer.getObj(buffer, Message.class);
         if (null != message) {
-            logger.debug("[M] "+message);
+            logger.debug("[M] " + message);
             ProcessorImpl.INST.onMessage(pipe, message);
         }
     }
 
-    private void publicJobByQuene(AioPipe pipe, ByteBuffer buffer) {
-//            waitOnPublish();
-        putToPublishQueue(pipe, buffer);
-        QueueItem item = publishQueue.poll();
-        pulishJobEvent(item.getPipe(), item.getBuffer());
-//        buffer.clear();
-    }
-
     @Override
-    public void onMessage(AioPipe pipe, Message message) {
+    public synchronized void onMessage(AioPipe pipe, Message message) {
         if (!shutdowNow && null != message) {
             if (MqConfig.inst.start_store_all_message_to_db) { // 持久化所有消息
                 if (!message.subscribeTF()) {
@@ -202,8 +185,8 @@ public enum ProcessorImpl implements Processor {
                     pulishJobEvent(message);
                 }*/
 //                    pulishJobEvent(message);
+                    // 发布消息
                     publishJobToWorker(message);
-
                 }
             }
         }
@@ -212,6 +195,7 @@ public enum ProcessorImpl implements Processor {
 
     /**
      * 第一次收到 AIO 数据流时,执行分派
+     *
      * @param pipe
      * @param buffer
      */
@@ -238,7 +222,7 @@ public enum ProcessorImpl implements Processor {
     public void publishJobToWorker(Message message) {
         message.getStat().setOn(Message.ON.SENDING);
         publishBizToWorkerPool(biz_worker, message);
-//        tiggerStoreComonMessageToDb(persistent_worker, message);
+        tiggerStoreComonMessageToDb(persistent_worker, message);
     }
 
     private void publishBizToWorkerPool(RingBuffer<JobEvent> ringBuffer, Message message) {
@@ -360,12 +344,16 @@ public enum ProcessorImpl implements Processor {
         changeMessageOnReply(subscribe, message);
         // 发送消息给订阅方
 //        System.err.println("send mq to pipid = "+ subscribe.getPipeId());
-        boolean writed = getPipeBy(subscribe.getPipeId()).write(IOUtils.wrap(serializer.toByte(message)));
+        boolean writed = write(getPipeBy(subscribe.getPipeId()), message);
         if (writed) {
             onSendSuccToPrcess(subscribe, message);
         } else {
             onSendFailToBackup(message);
         }
+    }
+
+    private boolean write(AioPipe pipe, Message message) {
+        return pipe.write(IOUtils.wrap(serializer.toByte(message)));
     }
 
     /**
@@ -568,7 +556,7 @@ public enum ProcessorImpl implements Processor {
         cache_subscribe.clear();
     }
 
-    private void shutdownService(){
+    private void shutdownService() {
         try {
             this.mqDisruptor.shutdown();
             this.biz_worker_pool.drainAndHalt();
@@ -601,7 +589,7 @@ public enum ProcessorImpl implements Processor {
      */
     private static void sleepOnPublish() {
         try {
-            Thread.sleep(0, 100);
+            Thread.sleep(0, 500);
         } catch (InterruptedException e) {
             // I said be quiet!
             currentThread().interrupt();
@@ -609,31 +597,5 @@ public enum ProcessorImpl implements Processor {
         }
     }
 
-    class QueueItem {
-        private AioPipe pipe;
-        private ByteBuffer buffer;
-
-        public QueueItem(AioPipe pipe, ByteBuffer buffer) {
-            this.pipe = pipe;
-            this.buffer = buffer;
-        }
-
-        public AioPipe getPipe() {
-            return pipe;
-        }
-
-        public ByteBuffer getBuffer() {
-            return buffer;
-        }
-    }
-
-    private void putToPublishQueue(AioPipe pipe, ByteBuffer buffer) {
-        try {
-            QueueItem item = new QueueItem(pipe, buffer);
-            publishQueue.put(item);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
 
 }

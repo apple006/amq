@@ -16,20 +16,38 @@ public class TestSend {
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
 
         final int groupSize = MqConfig.inst.client_channel_event_thread_size;
-        AsynchronousChannelGroup channelGroup = AsynchronousChannelGroup.withFixedThreadPool(groupSize, (r)->new Thread(r));
+        AsynchronousChannelGroup channelGroup = AsynchronousChannelGroup.withFixedThreadPool(groupSize, (r) -> new Thread(r));
         MqClientProcessor processor = new MqClientProcessor();
-        AioMqClient<Message> client = new AioMqClient(MqConfig.inst.host,MqConfig.inst.port,new MqProtocol(), processor);
+        AioMqClient<Message> client = new AioMqClient(MqConfig.inst.host, MqConfig.inst.port, new MqProtocol(), processor);
         client.start(channelGroup);
 
+        runWithNums(processor,3);
+
+//        runWithTimes(processor, 6);
+
+    }
+
+    private static void runWithNums(MqClientProcessor processor, int nums) {
         long s = System.currentTimeMillis();
-        for (int i = 0; i < 3; i++) { // 测试时,最好把 aioServer.setWriteQueueSize 的大小设置为 >= 测试次数
-            Thread.sleep(0,500);
+        for (int i = 0; i < nums; i++) { // 测试时,最好把 aioServer.setWriteQueueSize 的大小设置为 >= 测试次数
+//            Thread.sleep(0,500);
             TestUser user = new TestUser(i, "alice");
-            processor.onlyPublish("topic_hello", user);
+            processor.publish("topic_hello", user);
             System.err.println("send : " + user.toString());
         }
-        System.err.println("Time(ms):"+(System.currentTimeMillis()-s));
+        System.err.println("Time(ms):" + (System.currentTimeMillis() - s));
+    }
 
+    private static void runWithTimes(MqClientProcessor processor, int seconds) throws InterruptedException {
+        long s = System.currentTimeMillis();
+        final long end = seconds * 1000;
+        int i = 0;
+        while (System.currentTimeMillis() - s < end) {
+            Thread.sleep(0, 500);
+            TestUser user = new TestUser(++i, "alice");
+            processor.publish("topic_hello", user);
+        }
+        System.err.println("Time(ms):" + (System.currentTimeMillis() - s));
     }
 
 }

@@ -33,7 +33,7 @@ public enum MqConfig {
     // 客户端的连接线程池大小(2的倍数,等同于开了多少个客户端)
     public int client_connect_thread_pool_size = 2;
     // 客户端的的每一个channel 处理事件的线程数大小,实际上是(AsynchronousChannelGroup)的大小
-    public int client_channel_event_thread_size = 8;
+    public int client_channel_event_thread_size = 16;
 
     // Ringbuff 工作线程池大小(2的倍数)
     public int worker_thread_pool_size = 128;
@@ -72,8 +72,6 @@ public enum MqConfig {
     public boolean start_flow_monitor = true;
     //启动 MQ 后台管理系统
     public boolean start_mq_admin = true;
-    //启动 MQ 用安全队列方式去发布消息
-    public boolean start_mq_publish_of_safe_queue = true;
 
     //========================== DB ITME =====================================
     // MAPDB 数据库文件

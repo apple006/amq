@@ -78,7 +78,7 @@ public class AioClient<T> implements Runnable {
         //bind host
         socketChannel.connect(new InetSocketAddress(config.getHost(), config.getPort())).get();
         //连接成功则构造AIOSession对象
-        pipe = new AioPipe<>(socketChannel, config, new Reader<>(), new Writer<>());
+        pipe = new AioPipe<>(socketChannel, config);
         pipe.initSession();
         return pipe;
     }

@@ -11,6 +11,9 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * Func : NIO Untils
@@ -182,6 +185,16 @@ public class IOUtils {
     public static String getRemoteAddressStr(NetworkChannel channel) {
 
         return getRemoteAddress(channel).toString();
+    }
+
+    public static ExecutorService createFixedThreadPool(int threadSize, String threadName) {
+        return Executors.newFixedThreadPool(threadSize, new ThreadFactory() {
+            byte index = 0;
+            @Override
+            public Thread newThread(Runnable r) {
+                return new Thread(r, threadName + (++index));
+            }
+        });
     }
 
 

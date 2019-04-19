@@ -24,6 +24,8 @@ public class HttpStart extends Thread implements Controller {
     }
 */
 
+
+
     @Get("/hello")
     public Render index() {
         return Render.json("hello world.");
@@ -33,7 +35,6 @@ public class HttpStart extends Thread implements Controller {
     public Render index(String username) {
         return Render.json(C.newMap("username", username));
     }
-
 
 	public static void main(String[] args) {
         //

@@ -98,7 +98,7 @@ public class MqClientProcessor extends AioBaseProcessor<ByteBuffer> implements M
         if (null != result) {
             removeFutureResultMap(result.getSubscribeId());
             if (MqConfig.inst.mq_auto_acked) {
-                ack(result.getSubscribeId(), Message.Life.SPARK);
+                ack(result.getSubscribeId());
             }
         }
 
@@ -112,9 +112,9 @@ public class MqClientProcessor extends AioBaseProcessor<ByteBuffer> implements M
         callBackMap.put(subscribe.getSubscribeId(), acceptJobThenExecute);
     }
 
-    public <V> boolean finishJob(String topic, V v, Message acceptJob) {
+    public <V> boolean finishJob(String topic, V v, String acceptJobId) {
         try {
-            Message<Message.Key, V> finishJob = Message.buildFinishJob(acceptJob.getK().getId(), topic, v, getNode());
+            Message<Message.Key, V> finishJob = Message.buildFinishJob(acceptJobId, topic, v, getNode());
             return write(finishJob);
         } catch (Exception e) {
             e.printStackTrace();
@@ -123,7 +123,7 @@ public class MqClientProcessor extends AioBaseProcessor<ByteBuffer> implements M
     }
 
     @Override
-    public <M> boolean onlyPublish(String topic, M data) {
+    public <M> boolean publish(String topic, M data) {
         try {
             Message message = Message.buildCommonMessage(topic, data, getNode());
             return write(message);
@@ -134,8 +134,8 @@ public class MqClientProcessor extends AioBaseProcessor<ByteBuffer> implements M
     }
 
     @Override
-    public boolean ack(String messageId, Message.Life life) {
-        Message message = Message.buildAck(messageId, life);
+    public boolean ack(String messageId) {
+        Message message = Message.buildAck(messageId, Message.Life.SPARK);
         return write(message);
     }
 

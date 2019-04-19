@@ -1,6 +1,7 @@
 package com.artlongs.amq.core.aio;
 
 import com.artlongs.amq.tools.RingBufferQueue;
+import com.artlongs.amq.tools.RingBufferQueueAtomic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,8 +27,8 @@ public class AioPipe<T> implements Serializable {
     private static final Logger logger = LoggerFactory.getLogger(AioPipe.class);
 
     private Integer id;
-    private Semaphore writeSemaphore = new Semaphore(1);
-    private Semaphore readSemaphore = new Semaphore(1);
+    private Semaphore writeSemaphore = new Semaphore(1,true);
+    private Semaphore readSemaphore = new Semaphore(1,true);
 
     /**
      * Session状态:正常
@@ -76,10 +77,10 @@ public class AioPipe<T> implements Serializable {
     public AioPipe() {
     }
 
-    public AioPipe(AsynchronousSocketChannel channel, AioServerConfig config, Reader<T> reader, Writer<T> writer) {
+    public AioPipe(AsynchronousSocketChannel channel, AioServerConfig config) {
         this.channel = channel;
         this.ioServerConfig = config;
-        this.writeCacheQueue = new RingBufferQueue<>(config.getQueueSize());
+        this.writeCacheQueue = new RingBufferQueue<ByteBuffer>(config.getQueueSize());
         //初始化状态机
         config.getProcessor().stateEvent(this, State.NEW_PIPE, null);
         this.readBuffer = DirectBufferUtil.allocateDirectBuffer(config.getDirctBufferSize());
@@ -99,7 +100,7 @@ public class AioPipe<T> implements Serializable {
      * @param buffer
      */
     protected final void readFromChannel0(ByteBuffer buffer) {
-        channel.read(buffer, this, new Reader());
+        channel.read(buffer, this, new Reader<>());
     }
 
     private Set<Integer> reWrite = new HashSet<>(2000);
@@ -110,7 +111,7 @@ public class AioPipe<T> implements Serializable {
     protected final void writeToChannel0(ByteBuffer buffer) {
         if (this.isOpen()) {
             try {
-                channel.write(buffer, this, new Writer<>());
+                channel.write(buffer, 0L, TimeUnit.MILLISECONDS, this, new Writer<>());
             } catch (WritePendingException e) { // 发生了写并发冲突,放回队列重来
                 logger.warn("[AIO]WritePendingException try to write again");
                 tooFastNeedSleep();
@@ -159,6 +160,7 @@ public class AioPipe<T> implements Serializable {
             }
 
         } catch (Exception e) {
+            releaseWriteLock();
             e.printStackTrace();
         }
         return false;
@@ -181,10 +183,13 @@ public class AioPipe<T> implements Serializable {
 
         // buffer 写入到队列缓存
         int size = writeCacheQueue.put(buffer);
-        if (size >= ioServerConfig.getFlowLimitLine() && ioServerConfig.isServer()) {
+//        logger.debug("[AIO]write queue index of:({})", size);
+        // 流控
+/*        if (size >= ioServerConfig.getFlowLimitLine() && ioServerConfig.isServer()) {
+            logger.warn("[AIO]写入的数据大多,触发了流控.SIZE:({})", size);
             flowControl = true;
             ioServerConfig.getProcessor().stateEvent(this, State.FLOW_LIMIT, null);
-        }
+        }*/
         return size >= 0;
     }
 
@@ -218,13 +223,13 @@ public class AioPipe<T> implements Serializable {
         }
 
         //如果存在流控,则触发读操作,一定要放在continueWrite之前
-        if (flowControl && writeCacheQueue.size() > ioServerConfig.getReleaseLine()) {
+/*        if (flowControl && writeCacheQueue.size() > ioServerConfig.getReleaseLine()) {
             logger.warn("[AIO]写入的数据太多,触发了流控.");
             ioServerConfig.getProcessor().stateEvent(this, State.RELEASE_FLOW_LIMIT, null);
             flowControl = false;
             readFromChannel(false);
             tooFastNeedSleep();
-        }
+        }*/
 
         if (writeBuffer != null) {
             continueWrite();
@@ -269,10 +274,10 @@ public class AioPipe<T> implements Serializable {
         }
 
         //流控达到释放条件
-        if (writeCacheQueue.size() < ioServerConfig.getReleaseLine()) {
+/*        if (writeCacheQueue.size() < ioServerConfig.getReleaseLine()) {
             flowControl = false;
             writeToChannel();
-        }
+        }*/
 
         //数据读取完毕
         readedAndUnLock();
@@ -294,35 +299,37 @@ public class AioPipe<T> implements Serializable {
     }
 
     protected void continueRead() {
-        if (isAcquireToRead(100) && null != readBuffer) {
+        readFromChannel0(readBuffer);
+/*        if (isAcquireToRead(100) && null != readBuffer) {
             try {
                 readFromChannel0(readBuffer);
             } catch (ReadPendingException e) {
                 logger.warn("[AIO]ReadPendingException try to read again");
                 continueRead();
             }
-        } else {
-            readFromChannel(false);
-        }
+        }*/
     }
 
     protected void continueWrite() {
         writeToChannel0(writeBuffer);
     }
 
-    private boolean isAcquireToWrite(int timeout) {
+    public boolean isAcquireToWrite(int timeoutMS) {
         try {
-            return writeSemaphore.tryAcquire(timeout, TimeUnit.MILLISECONDS);
+            return writeSemaphore.tryAcquire(timeoutMS, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             e.printStackTrace();
         }
         return false;
     }
+    public void releaseWriteLock(){
+        writeSemaphore.release();
+    }
 
-    private boolean isAcquireToRead(int timeout) {
+    private boolean isAcquireToRead(int timeoutMS) {
         try {
-            return readSemaphore.tryAcquire(timeout, TimeUnit.MILLISECONDS);
+            return readSemaphore.tryAcquire(timeoutMS, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             e.printStackTrace();
@@ -461,7 +468,7 @@ public class AioPipe<T> implements Serializable {
 
     private void tooFastNeedSleep() {
         try {
-            Thread.sleep(100);
+            Thread.sleep(10);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             e.printStackTrace();

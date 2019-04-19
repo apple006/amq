@@ -6,24 +6,65 @@ package com.artlongs.amq.core;
  */
 public interface MqClientAction {
 
+    /**
+     * 普通的发布消息,适合大批量发送的场景
+     * @param topic
+     * @param v 传值
+     * @param <V>
+     * @return
+     */
+    <V> boolean publish(String topic, V v);
+
+    /**
+     * 普通的订阅消息
+     * @param topic
+     * @param callBack
+     * @param <V>
+     */
     <V> void subscribe(String topic, Call<V> callBack);
 
+    /**
+     * 普通的订阅消息,带传值
+     * @param topic
+     * @param v
+     * @param callBack
+     * @param <V>
+     */
     <V> void subscribe(String topic, V v, Call<V> callBack);
 
+    /**
+     * 发布一个工作任务,类似 RPC 调用
+     * @param topic
+     * @param v 传值
+     * @param <V>
+     * @return
+     */
     <V> Message publishJob(String topic, V v);
 
+    /**
+     * 接受一个工作任务
+     * @param topic
+     * @param acceptJobThenExecute 回调方法
+     * @param <V>
+     */
     <V> void acceptJob(String topic,Call<V> acceptJobThenExecute);
-    <V> boolean finishJob(String topic, V v,Message acceptJob);
 
-    <V> boolean onlyPublish(String topic, V v);
+    /**
+     * 反馈任务执行结果
+     * @param topic
+     * @param v 执行结果
+     * @param acceptJobId 收到的工作任务ID(messageId)
+     * @param <V>
+     * @return
+     */
+    <V> boolean finishJob(String topic, V v,String acceptJobId);
 
     /**
      * 确认收到消息
      *
      * @param messageId
-     * @param life
      * @return
      */
-    boolean ack(String messageId, Message.Life life);
+    boolean ack(String messageId);
 
 }

@@ -4,7 +4,6 @@ import com.artlongs.amq.core.aio.plugin.*;
 import com.artlongs.amq.core.event.AioEvent;
 import com.artlongs.amq.core.event.AioEventHandler;
 import com.artlongs.amq.disruptor.BlockingWaitStrategy;
-import com.artlongs.amq.disruptor.RingBuffer;
 import com.artlongs.amq.disruptor.dsl.Disruptor;
 import com.artlongs.amq.disruptor.dsl.ProducerType;
 import com.artlongs.amq.disruptor.util.DaemonThreadFactory;
@@ -22,7 +21,6 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.Function;
 
@@ -38,6 +36,9 @@ public class AioServer<T> implements Runnable {
      * <p>调用AioQuickServer的各setXX()方法，都是为了设置config的各配置项</p>
      */
     protected AioServerConfig<T> config = new AioServerConfig<>(true);
+
+    // 读线程池
+    private ExecutorService readExecutorService ;
     /**
      * 读回调事件处理
      */
@@ -57,9 +58,6 @@ public class AioServer<T> implements Runnable {
     private static ConcurrentHashMap<Integer, AioPipe> channelAliveMap = new ConcurrentHashMap<>(2000);
 
     private boolean checkAlive = false;
-
-    private ExecutorService readExecutorService;
-    public static RingBuffer<AioEvent> readRingBuffer = createDisrupter().start();
 
     /**
      * 设置服务端启动必要参数配置
@@ -91,7 +89,7 @@ public class AioServer<T> implements Runnable {
         if (config.isBannerEnabled()) {
             LOGGER.info(config.BANNER + "\r\n :: amq-socket ::\t(" + config.VERSION + ")");
         }
-        start0((AsynchronousSocketChannel channel)->new AioPipe<T>(channel, config, reader, new Writer<>()));
+        start0((AsynchronousSocketChannel channel)->new AioPipe<T>(channel, config));
     }
 
     /**
@@ -101,14 +99,7 @@ public class AioServer<T> implements Runnable {
      */
     protected final void start0(Function<AsynchronousSocketChannel, AioPipe<T>> aioPipeFunction) throws IOException {
         try {
-            readExecutorService = Executors.newFixedThreadPool(config.getServerThreadNum(), new ThreadFactory() {
-                byte index = 0;
-                @Override
-                public Thread newThread(Runnable r) {
-                    return new Thread(r, "Aio:read-" + (++index));
-                }
-            });
-            reader = new Reader<>(readExecutorService);
+            readExecutorService = IOUtils.createFixedThreadPool(config.getServerThreadNum(), "AIO:read-");
 
             this.aioPipeFunction = aioPipeFunction;
             asynchronousChannelThreadPool = AsynchronousChannelGroup.withFixedThreadPool(config.getServerThreadNum(), new ThreadFactory() {
@@ -165,6 +156,8 @@ public class AioServer<T> implements Runnable {
         LOGGER.warn("amq-socket server started on {} {}", config.getHost(), config.getPort());
         LOGGER.info("amq-socket server config is {}", config);
     }
+
+
 
     /**
      * 为每个新建立的连接创建 AioPipe 对象

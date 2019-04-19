@@ -20,7 +20,7 @@ public class BizEventHandler implements WorkHandler<JobEvent> {
     @Override
     public void onEvent(JobEvent event) throws Exception {
         Message message = event.getMessage();
-        logger.debug("[S]执行业务消息的匹配与发送 ......");
+        logger.debug("[MQ]执行业务消息的匹配与发送 ......");
         String topic = message.getK().getTopic();
         List<Subscribe> subscribeList = ProcessorImpl.INST.subscribeMatchOfTopic(topic);
         ProcessorImpl.INST.sendMessageToSubcribe(message, subscribeList);

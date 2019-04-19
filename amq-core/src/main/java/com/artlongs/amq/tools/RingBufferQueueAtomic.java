@@ -10,27 +10,25 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Func : RingBuffer Queue, 自动扩容
  *
  * @author: leeton on 2019/2/26.
  */
-public class RingBufferQueue<T> implements Iterable {
-    private static Logger logger = LoggerFactory.getLogger(RingBufferQueue.class);
+public class RingBufferQueueAtomic<T> implements Iterable {
+    private static Logger logger = LoggerFactory.getLogger(RingBufferQueueAtomic.class);
     private static int DEFAULT_SIZE = 2000;
     private T[] items;
-    private int head = 0;
-    private int tail = 0;
+    private AtomicInteger head = new AtomicInteger(0);
+    private AtomicInteger tail = new AtomicInteger(0);
     private int capacity = DEFAULT_SIZE;
     private int realSize = 0; //实际的 item 个数
     private final Semaphore track = new Semaphore(1, true);
-    private final ReentrantLock lock = new ReentrantLock(true);
     private int id;
 
-    public RingBufferQueue() {
+    public RingBufferQueueAtomic() {
         this.capacity = DEFAULT_SIZE;
         this.items = (T[]) Array.newInstance(Object.class, DEFAULT_SIZE);
         this.id = hashCode();
@@ -41,7 +39,7 @@ public class RingBufferQueue<T> implements Iterable {
      *
      * @param capacity
      */
-    public RingBufferQueue(int capacity) {
+    public RingBufferQueueAtomic(int capacity) {
         if (capacity <= 0) capacity = DEFAULT_SIZE;
         if (capacity % 2 != 0) throw new UnsupportedOperationException("RBQ(capacity),容量一定要设定为2的倍数.");
         this.capacity = capacity;
@@ -57,7 +55,7 @@ public class RingBufferQueue<T> implements Iterable {
     }
 
     public Boolean isEmpty() {
-        return (tail == head) && (tail == 0);
+        return (tail.intValue() == head.intValue()) && (tail.intValue() == 0);
     }
 
     public Boolean isNotEmpty() {
@@ -65,20 +63,20 @@ public class RingBufferQueue<T> implements Iterable {
     }
 
     public Boolean full() {
-        return tail == capacity;
+        return tail.intValue() == capacity;
     }
 
     public void clear() {
         if (track.tryAcquire()) {
             Arrays.fill(items, null);
-            this.head = 0;
-            this.tail = 0;
+            this.head = new AtomicInteger(0);
+            this.tail = new AtomicInteger(0);
             track.release();
         }
     }
 
     public int size() {
-        return (realSize = tail - head);
+        return (realSize = tail.intValue() - head.intValue());
     }
 
     public int capacity() {
@@ -86,22 +84,16 @@ public class RingBufferQueue<T> implements Iterable {
     }
 
     public int put(T v) {
-        lock.lock();
-        try {
-            if (full()) {
-                grow();
-            }
-            final int current = tail;
-            items[current] = v;
-            tail++;
-            size();
-            return current;
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            lock.unlock();
+        if (full()) {
+            grow();
         }
-        return -1;
+        final int current = tail.get();
+        items[current] = v;
+//        System.err.println("putindex=" + current);
+//        System.err.println("queue id =" +this.id);
+        tail.incrementAndGet();
+        size();
+        return current;
     }
 
     /**
@@ -113,9 +105,9 @@ public class RingBufferQueue<T> implements Iterable {
         if (isEmpty()) {
             return null;
         }
-        T item = items[head];
-        remove(head);
-        head++;
+        T item = items[head.get()];
+        remove(head.get());
+        head.incrementAndGet();
 //        System.err.println("head:" + head);
         size();
         return item;
@@ -161,20 +153,23 @@ public class RingBufferQueue<T> implements Iterable {
      * 扩容
      */
     private void grow() {
-        final int oldCapacity = items.length;
-        final int newCapacity = capacity << 1; //扩容一倍
-        if (newCapacity >= Integer.MAX_VALUE) {
-            downCap();
-            return;
-        }
-        try {
-            final T[] newElementData = (T[]) Array.newInstance(Object.class, newCapacity);
-            System.arraycopy(items, 0, newElementData, 0, oldCapacity);
-            this.items = newElementData;
-            this.capacity = newCapacity;
-        } catch (NegativeArraySizeException e) {
-            logger.error("oldCapacity:({}),newCapacity:({})", oldCapacity, newCapacity);
-            e.printStackTrace();
+        if(track.tryAcquire()){
+            final int oldCapacity = items.length;
+            final int newCapacity = capacity << 1; //扩容一倍
+            if (newCapacity >= Integer.MAX_VALUE) {
+                downCap();
+                return;
+            }
+            try {
+                final T[] newElementData = (T[]) Array.newInstance(Object.class, newCapacity);
+                System.arraycopy(items, 0, newElementData, 0, oldCapacity);
+                this.items = newElementData;
+                this.capacity = newCapacity;
+            } catch (NegativeArraySizeException e) {
+                logger.error("oldCapacity:({}),newCapacity:({})", oldCapacity, newCapacity);
+                e.printStackTrace();
+            }
+            track.release();
         }
     }
 
@@ -188,8 +183,8 @@ public class RingBufferQueue<T> implements Iterable {
         System.arraycopy(items, oldCapacity - DEFAULT_SIZE, newElementData, 0, DEFAULT_SIZE);
         this.items = newElementData;
         this.capacity = newCapacity;
-        this.head = 0;
-        this.tail = DEFAULT_SIZE;
+        this.head = new AtomicInteger(0);
+        this.tail = new AtomicInteger(DEFAULT_SIZE);
         size();
 
     }
@@ -251,18 +246,8 @@ public class RingBufferQueue<T> implements Iterable {
         }
     }
 
-    private boolean tryAcquire(int timeoutMS) {
-        try {
-            return track.tryAcquire(timeoutMS, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            e.printStackTrace();
-        }
-        return false;
-    }
-
     public static void main(String[] args) {
-        RingBufferQueue<ByteBuffer> rbq = new RingBufferQueue<>(2);
+        RingBufferQueueAtomic<ByteBuffer> rbq = new RingBufferQueueAtomic<>(2);
         for (int i = 0; i < 10; i++) {
             rbq.put(ByteBuffer.wrap(String.valueOf(i).getBytes()));
         }

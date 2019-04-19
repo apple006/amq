@@ -286,7 +286,7 @@ public class Message<K extends Message.Key, V> implements KV<K, V> {
 
     public static class Key implements Serializable {
         private static final long serialVersionUID = 1L;
-        private String id;
+        private String id; // message Id
         private String topic;
         private Integer sendNode;  //发布者节点 (pipeId)
 

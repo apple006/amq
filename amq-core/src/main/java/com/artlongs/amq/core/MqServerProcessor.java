@@ -27,7 +27,7 @@ public class MqServerProcessor extends AioBaseProcessor<ByteBuffer> {
     @Override
     public void stateEvent0(AioPipe session, State state, Throwable throwable) {
         if (!isSkipState(state)) {
-            logger.debug("消息处理,状态:{}, EX:{}",state.toString(),throwable);
+            logger.debug("[AIO] 消息处理,状态:{}, EX:{}",state.toString(),throwable);
         }
     }
 
@@ -40,14 +40,14 @@ public class MqServerProcessor extends AioBaseProcessor<ByteBuffer> {
     }
 
     private void directSend(AioPipe pipe, ByteBuffer buffer) {
-        logger.debug("AIO direct send buffer to MQ");
+        logger.debug("[AIO] direct send buffer to MQ");
         ProcessorImpl.INST.onMessage(pipe, buffer);
         setRead(buffer);
     }
 
     private void decodeAndSend(AioPipe pipe, ByteBuffer buffer) {
         Message message = decode(buffer);
-        logger.debug("AIO decode and send:" + message.toString());
+        logger.debug("[AIO] decode and send:" + message.toString());
         ProcessorImpl.INST.onMessage(pipe, message);
     }
 

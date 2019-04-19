@@ -24,6 +24,7 @@ public enum Fst implements ISerializer {
         fst.registerClass(Subscribe.class);
         fst.registerClass(Render.class);
         fst.registerClass(Render.Fmt.class);
+        fst.registerClass(TestUser.class);
     }
 
     public <T> byte[] toByte(T obj) {
